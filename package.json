@@ -1,8 +1,8 @@
 {
-  "name": "zpl-escpos-printer",
-  "productName": "Zpl/EscPos Printer",
+  "name": "zpl-printer-simulator",
+  "productName": "ZPL Printer",
   "version": "3.0.2",
-  "description": "Printer emulator for Zpl/EscPos rendering engine.",
+  "description": "Printer emulator for ZPL rendering engine.",
   "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -13,14 +13,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/erikn69/ZplEscPrinter.git"
+    "url": "git+https://github.com/sshaizkhan/zpl-printer-emulator.git"
   },
-  "author": "ErikN <er.niebla@gmail.com>",
+  "author": "ShahwazK <sshaizkhan@gmail.com>",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/erikn69/ZplEscPrinter/issues"
+    "url": "https://github.com/sshaizkhan/zpl-printer-emulator/issues"
   },
-  "homepage": "https://github.com/erikn69/ZplEscPrinter#readme",
+  "homepage": "https://github.com/sshaizkhan/zpl-printer-emulator#readme",
   "devDependencies": {
     "@electron-forge/cli": "^7.0.0",
     "@electron-forge/maker-deb": "^7.0.0",

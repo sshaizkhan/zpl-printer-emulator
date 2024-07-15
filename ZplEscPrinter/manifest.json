@@ -4,7 +4,7 @@
     "short_name": "Zpl Printer",
     "version": "1.6",
     "description": "Printer emulator for zpl rendering engine.",
-    "author": "Simon Binkert",
+    "author": "Shahwaz Khan",
     "app": {
         "background": {
             "scripts": [ "js/background.js" ],
