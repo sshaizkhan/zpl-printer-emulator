@@ -20,7 +20,7 @@ const createWindow = () => {
         }
     })
 
-    win.loadFile('ZplEscPrinter/main.html')
+    win.loadFile('ZPLPrinter/main.html')
     if(process.env.NODE_ENV === "development"){
         win.webContents.openDevTools()
     }
