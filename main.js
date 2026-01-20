@@ -5,7 +5,9 @@ const fs = require('fs')
 if (require('electron-squirrel-startup')) return app.quit();
 
 const { updateElectronApp, UpdateSourceType } = require('update-electron-app')
-updateElectronApp()
+if (!(process.platform==='darwin'&&!app.isPackaged)) {
+    updateElectronApp()
+}
 
 let appVersion = false;
 try {
