@@ -7,8 +7,8 @@ const iconDir = path.resolve(__dirname, 'icons');
 
 const config = {
     packagerConfig: {
-        name: "Zpl-EscPos Printer",
-        executableName: 'zpl-escpos-printer',
+        name: "ZPL Printer",
+        executableName: 'zpl-printer',
         icon: path.resolve(__dirname, 'icons', 'icon'),
     },
     makers: [
@@ -25,11 +25,11 @@ const config = {
             name: "@electron-forge/maker-squirrel",
             platforms: ['win32'],
             config: (arch) => ({
-                name: "zpl-escpos-printer",
-                exe: 'zpl-escpos-printer.exe',
-                iconUrl: "https://github.com/erikn69/ZplEscPrinter/blob/master/icons/icon.ico?raw=true",
+                name: "zpl-printer",
+                exe: 'zpl-printer.exe',
+                iconUrl: "https://github.com/sshaizkhan/zpl-printer-emulator/tree/master",
                 noMsi: true,
-                setupExe: `zpl-escpos-printer-${version}-win32-${arch}-setup.exe`,
+                setupExe: `zpl-printer-${version}-win32-${arch}-setup.exe`,
                 setupIcon: path.resolve(iconDir, "icon.ico"),
             })
         },
@@ -62,8 +62,8 @@ const config = {
             name: "@electron-forge/publisher-github",
             config: {
                 repository: {
-                    owner: "erikn69",
-                    name: "ZplEscPrinter"
+                    owner: "sshaizkhan",
+                    name: "zpl-printer-emulator"
                 },
                 prerelease: false,
                 draft: true
