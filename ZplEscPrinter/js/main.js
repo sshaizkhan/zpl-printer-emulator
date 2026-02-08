@@ -8,6 +8,7 @@ const net = require('net');
 let clientSocketInfo;
 let server;
 let configs = {};
+let designer = null;
 const escposCommands = new EscposCommands(configs);
 const zplCommands = new ZplCommands(configs);
 
@@ -71,6 +72,7 @@ $(document).ready(function () {
 
     initEvents();
     initConfigs();
+    initDesigner();
 });
 function getSize(width, height) {
     const defaultWidth = 386;
@@ -587,6 +589,127 @@ function toggleSwitch(group) {
 
     $(radios[first?1:0]).prop('checked', true).trigger('change');
 }
+// ── Label Template Designer ──────────────────────────────────────────
+function initDesigner() {
+    designer = new LabelDesigner('designer-canvas', 'props-content', configs);
+    updateDesignerStatus();
+
+    // Add element buttons
+    $('#add-text-el').on('click', function () {
+        designer.addTextElement();
+        updateDesignerStatus();
+    });
+    $('#add-box-el').on('click', function () {
+        designer.addBoxElement();
+        updateDesignerStatus();
+    });
+    $('#add-barcode-el').on('click', function () {
+        designer.addBarcodeElement();
+        updateDesignerStatus();
+    });
+
+    // Grid toggle
+    $('#toggle-grid-btn').on('click', function () {
+        designer.toggleGrid();
+        $(this).toggleClass('active');
+    });
+
+    // Delete selected element
+    $('#delete-el-btn').on('click', function () {
+        if (designer.selectedElement) {
+            designer.deleteElement(designer.selectedElement);
+            updateDesignerStatus();
+        }
+    });
+
+    // Clear all
+    $('#clear-all-btn').on('click', function () {
+        if (designer.elements.length === 0) return;
+        if (confirm('Remove all elements from the canvas?')) {
+            designer.clearAll();
+            updateDesignerStatus();
+        }
+    });
+
+    // Template name
+    $('#template-name').on('input', function () {
+        designer.templateName = $(this).val();
+    });
+
+    // Export
+    $('#export-template-btn').on('click', function () {
+        designer.templateName = $('#template-name').val() || '';
+        const json = designer.exportTemplate();
+        const text = JSON.stringify(json, null, 2);
+        $('#template-io-data').val(text);
+        $('#template-io-label').text('Export Template');
+        $('#template-io-action').hide();
+        $('#template-io-copy').removeClass('d-none').show();
+        const modal = new Bootstrap.Modal(document.getElementById('template-io-modal'));
+        modal.show();
+    });
+
+    // Import button opens modal in import mode
+    $('#import-template-btn').on('click', function () {
+        $('#template-io-data').val('');
+        $('#template-io-label').text('Import Template');
+        $('#template-io-action').show();
+        $('#template-io-action-label').text('Import');
+        $('#template-io-copy').addClass('d-none');
+    });
+
+    // Import action
+    $('#template-io-action').on('click', function () {
+        const text = $('#template-io-data').val();
+        if (!text || !text.trim()) {
+            notify('Please paste template JSON data.', 'warning-sign', 'warning');
+            return;
+        }
+        try {
+            designer.importTemplate(text);
+            $('#template-name').val(designer.templateName);
+            updateDesignerStatus();
+            Bootstrap.Modal.getInstance(document.getElementById('template-io-modal')).hide();
+            notify('Template imported successfully with ' + designer.elements.length + ' elements.', 'ok', 'success');
+        } catch (e) {
+            notify('Import error: ' + e.message, 'remove-sign', 'danger', 5000);
+        }
+    });
+
+    // Copy to clipboard
+    $('#template-io-copy').on('click', function () {
+        const textarea = document.getElementById('template-io-data');
+        textarea.select();
+        document.execCommand('copy');
+        notify('Template JSON copied to clipboard.', 'copy', 'info');
+    });
+
+    // Update designer when switching to designer tab
+    $('button[data-bs-target="#designer-pane"]').on('shown.bs.tab', function () {
+        designer.updateLabelSize();
+        updateDesignerStatus();
+    });
+
+    // Also open settings from designer tab
+    $('#designer-settings-btn').on('click', function () {
+        if ($('#isOn').is(':checked')) {
+            toggleSwitch('#on_off');
+        }
+        initConfigs($('#settings-window'));
+    });
+}
+
+function updateDesignerStatus() {
+    if (!designer) return;
+    const unit = configs.unit || '1';
+    const unitLabel = unit === '1' ? 'in' : (unit === '2' ? 'cm' : (unit === '3' ? 'mm' : 'px'));
+    $('#designer-label-size').text(
+        (configs.width || '4') + ' x ' + (configs.height || '6') + ' ' + unitLabel +
+        ' (' + designer.labelWidthMm.toFixed(1) + ' x ' + designer.labelHeightMm.toFixed(1) + ' mm)'
+    );
+    $('#designer-el-count').text(designer.elements.length);
+}
+
 // Save configs in local storage
 function saveConfigs() {
     for (let key in configs) {
@@ -609,6 +732,13 @@ function saveConfigs() {
 
     notify('Printer settings changes successfully saved', 'cog', 'info');
     $('#btn-close-save-settings').trigger('click');
+
+    // Update designer canvas if label size or density changed
+    if (designer) {
+        designer.configs = configs;
+        designer.updateLabelSize();
+        updateDesignerStatus();
+    }
 }
 // Init/load configs from local storage
 function initConfigs(context) {

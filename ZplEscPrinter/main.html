@@ -5,6 +5,7 @@
     <link href="css/style.css" type="text/css" rel="stylesheet"/>
     <script src="js/esc_commands.js" type="text/javascript"></script>
     <script src="js/zpl_commands.js" type="text/javascript"></script>
+    <script src="js/label-designer.js" type="text/javascript"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="js/main.js" type="module"></script>
@@ -18,40 +19,113 @@
             <button id="btn-close" type="button" class="btn-close float-end" aria-label="Close" style="-webkit-app-region: no-drag;"></button>
         </div>
         <div class="card-body pb-0 mb-0">
-            <nav class="navbar navbar-light bg-light border rounded pb-0 pt-1 ps-2 pe-2 mb-3">
-                <div class="d-flex float-start mb-1">
-                    <div id='printer-type' class="btn-group" role="group" aria-label="Printer Type">
-                        <input id="isZpl" name="printer-type" type="radio" class="btn-check" autocomplete="off">
-                        <label class="btn btn-outline-primary" for="isZpl" title="Zpl Printer">ZPL</label>
+            <ul class="nav nav-tabs mb-2" id="mainTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="printer-tab-btn" data-bs-toggle="tab" data-bs-target="#printer-pane" type="button" role="tab">Printer</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="designer-tab-btn" data-bs-toggle="tab" data-bs-target="#designer-pane" type="button" role="tab">Create Label Template</button>
+                </li>
+            </ul>
+            <div class="tab-content">
+                <!-- Printer Tab -->
+                <div class="tab-pane fade show active" id="printer-pane" role="tabpanel">
+                    <nav class="navbar navbar-light bg-light border rounded pb-0 pt-1 ps-2 pe-2 mb-3">
+                        <div class="d-flex float-start mb-1">
+                            <div id='printer-type' class="btn-group" role="group" aria-label="Printer Type">
+                                <input id="isZpl" name="printer-type" type="radio" class="btn-check" autocomplete="off">
+                                <label class="btn btn-outline-primary" for="isZpl" title="Zpl Printer">ZPL</label>
 
-                        <input id="isEsc" name="printer-type" type="radio" class="btn-check" autocomplete="off" checked>
-                        <label class="btn btn-outline-primary" for="isEsc" title="ESC/POS Printer">ESC/POS</label>
-                    </div>
-                    <button id="btn-test" class="btn btn-outline-primary ms-2" type="button" title="Test Printer" data-bs-toggle="modal" data-bs-target="#printer-test">
-                        <i class="glyphicon glyphicon-edit"></i>
-                    </button>
-                </div>
-                <div class="d-flex float-end mb-1">
-                    <div id='on_off' class="btn-group" role="group" aria-label="TCP Socket">
-                        <input id="isOn" name="tcp-socket" type="radio" class="btn-check" autocomplete="off">
-                        <label class="btn btn-outline-primary" for="isOn" title="Start TCP Socket">ON</label>
+                                <input id="isEsc" name="printer-type" type="radio" class="btn-check" autocomplete="off" checked>
+                                <label class="btn btn-outline-primary" for="isEsc" title="ESC/POS Printer">ESC/POS</label>
+                            </div>
+                            <button id="btn-test" class="btn btn-outline-primary ms-2" type="button" title="Test Printer" data-bs-toggle="modal" data-bs-target="#printer-test">
+                                <i class="glyphicon glyphicon-edit"></i>
+                            </button>
+                        </div>
+                        <div class="d-flex float-end mb-1">
+                            <div id='on_off' class="btn-group" role="group" aria-label="TCP Socket">
+                                <input id="isOn" name="tcp-socket" type="radio" class="btn-check" autocomplete="off">
+                                <label class="btn btn-outline-primary" for="isOn" title="Start TCP Socket">ON</label>
 
-                        <input id="isOff" name="tcp-socket" type="radio" class="btn-check" autocomplete="off" checked>
-                        <label class="btn btn-outline-primary" for="isOff" title="Stop TCP Socket">OFF</label>
+                                <input id="isOff" name="tcp-socket" type="radio" class="btn-check" autocomplete="off" checked>
+                                <label class="btn btn-outline-primary" for="isOff" title="Stop TCP Socket">OFF</label>
+                            </div>
+                            <button id="btn-remove" class="btn btn-outline-primary ms-2" type="button" title="Remove Labels">
+                                <i class="glyphicon glyphicon-trash"></i>
+                            </button>
+                            <button id="btn-setting" class="btn btn-outline-primary ms-2" type="button" data-bs-toggle="modal" data-bs-target="#settings-window" aria-label="Printer Settings" title="Printer Settings">
+                                <i class="glyphicon glyphicon-cog"></i>
+                            </button>
+                        </div>
+                    </nav>
+                    <div id="escpos-container" class="label-container bg-light border rounded overflow-auto is-esc">
+                        <div id="label-esc" class="position-relative"></div>
                     </div>
-                    <button id="btn-remove" class="btn btn-outline-primary ms-2" type="button" title="Remove Labels">
-                        <i class="glyphicon glyphicon-trash"></i>
-                    </button>
-                    <button id="btn-setting" class="btn btn-outline-primary ms-2" type="button" data-bs-toggle="modal" data-bs-target="#settings-window" aria-label="Printer Settings" title="Printer Settings">
-                        <i class="glyphicon glyphicon-cog"></i>
-                    </button>
+                    <div id="zpl-container" class="label-container bg-light border rounded overflow-auto is-zpl">
+                        <div id="label-zpl" class="position-relative"></div>
+                    </div>
                 </div>
-            </nav>
-            <div id="escpos-container" class="label-container bg-light border rounded overflow-auto is-esc">
-                <div id="label-esc" class="position-relative"></div>
-            </div>
-            <div id="zpl-container" class="label-container bg-light border rounded overflow-auto is-zpl">
-                <div id="label-zpl" class="position-relative"></div>
+                <!-- Label Template Designer Tab -->
+                <div class="tab-pane fade" id="designer-pane" role="tabpanel">
+                    <div class="designer-toolbar d-flex align-items-center flex-wrap gap-2 mb-2 p-2 bg-light border rounded">
+                        <div class="input-group input-group-sm" style="width: 220px;">
+                            <span class="input-group-text">Name</span>
+                            <input type="text" id="template-name" class="form-control" placeholder="templateName">
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button id="add-text-el" class="btn btn-outline-primary" title="Add Text Element">
+                                <i class="glyphicon glyphicon-font"></i> Text
+                            </button>
+                            <button id="add-box-el" class="btn btn-outline-primary" title="Add Box / Line Element">
+                                <i class="glyphicon glyphicon-minus"></i> Box
+                            </button>
+                            <button id="add-barcode-el" class="btn btn-outline-primary" title="Add Barcode Element">
+                                <i class="glyphicon glyphicon-barcode"></i> Barcode
+                            </button>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button id="toggle-grid-btn" class="btn btn-outline-secondary" title="Toggle Grid Overlay">
+                                <i class="glyphicon glyphicon-th"></i> Grid
+                            </button>
+                            <button id="delete-el-btn" class="btn btn-outline-danger" title="Delete Selected Element (Del)">
+                                <i class="glyphicon glyphicon-trash"></i>
+                            </button>
+                            <button id="clear-all-btn" class="btn btn-outline-danger" title="Clear All Elements">
+                                <i class="glyphicon glyphicon-remove"></i> Clear
+                            </button>
+                        </div>
+                        <div class="btn-group btn-group-sm ms-auto">
+                            <button id="import-template-btn" class="btn btn-outline-info" title="Import Template JSON" data-bs-toggle="modal" data-bs-target="#template-io-modal" data-io-mode="import">
+                                <i class="glyphicon glyphicon-open"></i> Import
+                            </button>
+                            <button id="export-template-btn" class="btn btn-outline-success" title="Export Template JSON">
+                                <i class="glyphicon glyphicon-save"></i> Export
+                            </button>
+                        </div>
+                        <button id="designer-settings-btn" class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#settings-window" title="Label Size Settings">
+                            <i class="glyphicon glyphicon-cog"></i>
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2" style="height: 74vh;">
+                        <div class="designer-canvas-wrapper flex-grow-1 bg-light border rounded overflow-auto d-flex align-items-start justify-content-center p-3">
+                            <div id="designer-canvas" class="designer-canvas position-relative"></div>
+                        </div>
+                        <div id="properties-panel" class="border rounded bg-white overflow-auto" style="width: 260px; min-width: 260px;">
+                            <div class="p-2">
+                                <h6 class="mb-2 fw-semibold">Properties</h6>
+                                <div id="props-content">
+                                    <p class="text-muted small">Select an element to edit its properties</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="designer-status-bar d-flex gap-3 mt-1 px-2 small text-muted">
+                        <span>Label: <b id="designer-label-size"></b></span>
+                        <span>Elements: <b id="designer-el-count">0</b></span>
+                        <span>Coordinates in mm (origin: top-left)</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -428,6 +502,31 @@
             </div>
         </div>
         <button id="btn-modal-confirm" class="d-none" type="button" data-bs-toggle="modal" data-bs-target="#modal-confirm"></button>
+    </div>
+    <!-- Template Import/Export Modal -->
+    <div class="modal fade" id="template-io-modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header pb-1 pt-1 pe-3 ps-3">
+                    <h5 class="modal-title" id="template-io-title">
+                        <i class="glyphicon glyphicon-transfer pe-2"></i>
+                        <span id="template-io-label">Import / Export Template</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-floating">
+                        <textarea id="template-io-data" class="form-control font-monospace" placeholder="JSON" style="height: 450px; font-size: 12px;"></textarea>
+                        <label for="template-io-data">Template JSON</label>
+                    </div>
+                </div>
+                <div class="modal-footer p-1">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="glyphicon glyphicon-remove"></i> Close</button>
+                    <button id="template-io-action" type="button" class="btn btn-primary"><i class="glyphicon glyphicon-ok"></i> <span id="template-io-action-label">Import</span></button>
+                    <button id="template-io-copy" type="button" class="btn btn-info d-none"><i class="glyphicon glyphicon-copy"></i> Copy to Clipboard</button>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 
