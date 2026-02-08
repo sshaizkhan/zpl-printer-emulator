@@ -157,10 +157,10 @@ class ZplCommands {
    *   Bit 7 (0x80): Printhead Detection Error
    *
    * Warning flags (second hex group):
-   *   Bit 0 (0x01): Media Near End
-   *   Bit 1 (0x02): Ribbon Near End
-   *   Bit 4 (0x10): Replace Printhead
-   *   Bit 5 (0x20): Clean Printhead
+   *   Bit 0 (0x01): Need to Calibrate Media
+   *   Bit 1 (0x02): Clean Printhead
+   *   Bit 2 (0x04): Replace Printhead
+   *   Bit 3 (0x08): Paper-near-end Sensor
    */
   getHostQueryErrorStatus() {
     const c = this.configs;
@@ -177,12 +177,12 @@ class ZplCommands {
     if (t(c.hqesBadPrintheadElement))     errorFlags |= 0x00000040;
     if (t(c.hqesPrintheadDetectionError)) errorFlags |= 0x00000080;
 
-    // Build warning flags bitmask
+    // Build warning flags bitmask (per Zebra spec)
     let warningFlags = 0;
-    if (t(c.hqesMediaNearEnd))      warningFlags |= 0x00000001;
-    if (t(c.hqesRibbonNearEnd))     warningFlags |= 0x00000002;
-    if (t(c.hqesReplacePrinthead))  warningFlags |= 0x00000010;
-    if (t(c.hqesCleanPrinthead))    warningFlags |= 0x00000020;
+    if (t(c.hqesMediaNearEnd))      warningFlags |= 0x00000008;  // Bit 3: Paper-near-end Sensor
+    if (t(c.hqesRibbonNearEnd))     warningFlags |= 0x00000001;  // Bit 0: Need to Calibrate Media (reusing for ribbon)
+    if (t(c.hqesReplacePrinthead))  warningFlags |= 0x00000004;  // Bit 2: Replace Printhead
+    if (t(c.hqesCleanPrinthead))    warningFlags |= 0x00000002;  // Bit 1: Clean Printhead
 
     const errHex = errorFlags.toString(16).padStart(8, '0');
     const warnHex = warningFlags.toString(16).padStart(8, '0');

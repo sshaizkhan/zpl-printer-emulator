@@ -253,6 +253,8 @@ function startTcpServer() {
         // Buffer to accumulate data chunks (fix for large data > 64KB)
         let buffer = Buffer.alloc(0);
         let processTimeout = null;
+        const keepConnection = [1, '1', true, 'true'].includes(configs.keepTcpSocket);
+        
         async function processData(data) {
             let textView = data.toString('utf8');
 
@@ -276,17 +278,29 @@ function startTcpServer() {
                 return;
             }
 
-            if (![1, '1', true, 'true'].includes(configs.keepTcpSocket)) {
+            if (!keepConnection) {
                 toggleSwitch('#on_off');
             }
 
             try{
                 let response = await zpl(data);
                 if (response) sock.write(response);
-                sock.end();
+                
+                // Only close connection if keepTcpSocket is disabled
+                if (!keepConnection) {
+                    sock.end();
+                } else {
+                    // Reset buffer for next command on same connection
+                    buffer = Buffer.alloc(0);
+                }
             }catch(err){
                 console.error(err);
                 notify('ERROR: {0}'.format(err.message), 'print', 'danger', 0);
+                if (!keepConnection) {
+                    sock.end();
+                } else {
+                    buffer = Buffer.alloc(0);
+                }
             }
         }
         sock.on('data', function (data) {
@@ -294,7 +308,10 @@ function startTcpServer() {
             notify(`${buffer.length} bytes received from Client: <b>${sock.remoteAddress}</b> Port: <b>${sock.remotePort}</b>`, 'print', 'info', 1000);
             // Debounce: wait 100ms after last chunk before processing
             if (processTimeout) clearTimeout(processTimeout);
-            processTimeout = setTimeout(() => processData(buffer), 100);
+            processTimeout = setTimeout(() => {
+                const dataToProcess = buffer;
+                processData(dataToProcess);
+            }, 100);
         });
     });
 }
@@ -320,10 +337,10 @@ function computeHqesPreview() {
     if ([1, "1", true, "true"].includes(configs.hqesPrintheadDetectionError)) errorFlags |= 0x00000080;
 
     let warningFlags = 0;
-    if ([1, "1", true, "true"].includes(configs.hqesMediaNearEnd)) warningFlags |= 0x00000001;
-    if ([1, "1", true, "true"].includes(configs.hqesRibbonNearEnd)) warningFlags |= 0x00000002;
-    if ([1, "1", true, "true"].includes(configs.hqesReplacePrinthead)) warningFlags |= 0x00000010;
-    if ([1, "1", true, "true"].includes(configs.hqesCleanPrinthead)) warningFlags |= 0x00000020;
+    if ([1, "1", true, "true"].includes(configs.hqesMediaNearEnd)) warningFlags |= 0x00000008;  // Bit 3: Paper-near-end Sensor
+    if ([1, "1", true, "true"].includes(configs.hqesRibbonNearEnd)) warningFlags |= 0x00000001;  // Bit 0: Need to Calibrate Media (reusing for ribbon)
+    if ([1, "1", true, "true"].includes(configs.hqesReplacePrinthead)) warningFlags |= 0x00000004;  // Bit 2: Replace Printhead
+    if ([1, "1", true, "true"].includes(configs.hqesCleanPrinthead)) warningFlags |= 0x00000002;  // Bit 1: Clean Printhead
 
     const errHex = errorFlags.toString(16).padStart(8, '0');
     const warnHex = warningFlags.toString(16).padStart(8, '0');
