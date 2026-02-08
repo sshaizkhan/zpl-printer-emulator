@@ -1,8 +1,8 @@
 {
-  "name": "zpl-escpos-printer",
-  "productName": "Zpl/EscPos Printer",
-  "version": "3.0.12",
-  "description": "Printer emulator for Zpl/EscPos rendering engine.",
+  "name": "zpl-printer",
+  "productName": "ZPL Printer",
+  "version": "4.0.0",
+  "description": "ZPL Printer Emulator with support for ~HS, ~HQES, ~JA, ~PS and more.",
   "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

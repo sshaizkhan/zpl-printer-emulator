@@ -1,4 +1,4 @@
-﻿@import "../../node_modules/bootstrap/dist/css/bootstrap.min.css";
+@import "../../node_modules/bootstrap/dist/css/bootstrap.min.css";
 @import "../../node_modules/glyphicons-only-bootstrap/css/bootstrap.min.css";
 
 ::-webkit-scrollbar-thumb {
@@ -38,32 +38,32 @@ input[type=checkbox]._big, input[type=radio]._big, ._big>input[type=checkbox], .
     margin-right: 10px;
 }
 
-.escpos-col {
+.status-col {
     padding-right: 5px;
     padding-left: 0;
 }
-.escpos-col > .col {
+.status-col > .col {
     margin-right: 0;
     padding-right: 0;
     margin-bottom: 2px;
     padding-left: 6px;
 }
-.escpos-col > .col label {
+.status-col > .col label {
     font-size: 11px;
     line-height: 1;
     font-weight: bold;
     margin-left: -5px;
     margin-top: 6px;
 }
-.escpos-col > .col .form-check {
+.status-col > .col .form-check {
     min-height: auto !important;
 }
-.escpos-col > .col > div > span {
+.status-col > .col > div > span {
     width: 100%;
     padding: 0 0.3rem;
     padding-bottom: 1px;
 }
-.escpos-col > .col input[type=checkbox]._big {
+.status-col > .col input[type=checkbox]._big {
     -ms-transform: scale(1.2);
     -moz-transform: scale(1.2);
     -webkit-transform: scale(1.2);
