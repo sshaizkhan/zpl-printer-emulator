@@ -11,16 +11,12 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish"
   },
+  "author": "Shahwaz Khan <sshaizkhan@gmail.com>",
+  "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/erikn69/ZplEscPrinter.git"
+    "url": "https://github.com/sshaizkhan/zpl-printer-emulator.git"
   },
-  "author": "ErikN <er.niebla@gmail.com>",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/erikn69/ZplEscPrinter/issues"
-  },
-  "homepage": "https://github.com/erikn69/ZplEscPrinter#readme",
   "devDependencies": {
     "@electron-forge/cli": "^7.0.0",
     "@electron-forge/maker-deb": "^7.0.0",
@@ -30,6 +26,7 @@
     "@electron-forge/publisher-github": "^7.0.0",
     "@rabbitholesyndrome/electron-forge-maker-portable": "^0.2.0",
     "electron": "^33.0.0",
+    "electron-reload": "^2.0.0-alpha.1",
     "yarn": "^1.22.22"
   },
   "dependencies": {

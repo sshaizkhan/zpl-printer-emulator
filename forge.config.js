@@ -27,7 +27,7 @@ const config = {
             config: (arch) => ({
                 name: "zpl-printer",
                 exe: 'zpl-printer.exe',
-                iconUrl: "https://github.com/erikn69/ZplEscPrinter/blob/master/icons/icon.ico?raw=true",
+                iconUrl: "https://github.com/sshaizkhan/zpl-printer-emulator/tree/master",
                 noMsi: true,
                 setupExe: `zpl-printer-${version}-win32-${arch}-setup.exe`,
                 setupIcon: path.resolve(iconDir, "icon.ico"),
@@ -62,8 +62,8 @@ const config = {
             name: "@electron-forge/publisher-github",
             config: {
                 repository: {
-                    owner: "erikn69",
-                    name: "ZplEscPrinter"
+                    owner: "sshaizkhan",
+                    name: "zpl-printer-emulator"
                 },
                 prerelease: false,
                 draft: true

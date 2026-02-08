@@ -4,6 +4,12 @@ const fs = require('fs')
 
 if (require('electron-squirrel-startup')) return app.quit();
 
+if (process.env.NODE_ENV === 'development') {
+    require('electron-reload')(__dirname, {
+        hardResetMethod: 'exit'
+    });
+}
+
 const { updateElectronApp, UpdateSourceType } = require('update-electron-app')
 if (!(process.platform==='darwin'&&!app.isPackaged)) {
     updateElectronApp()
@@ -35,7 +41,7 @@ const createWindow = () => {
     win.on('focus', () => {
         win.webContents.send('window-focus-change', 'focused');
     });
-    win.loadFile('ZplEscPrinter/main.html')
+    win.loadFile('ZPLPrinter/main.html')
     if(process.env.NODE_ENV === "development"){
         win.webContents.openDevTools()
     }

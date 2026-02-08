@@ -49,8 +49,8 @@ mv "ZPL Printer.app" /Applications/
 
 ### Installation
 ```bash
-git clone https://github.com/erikn69/ZplEscPrinter.git
-cd ZplEscPrinter
+git clone https://github.com/sshaizkhan/zpl-printer-emulator.git
+cd zpl-printer-emulator
 yarn install  # or: npm install
 ```
 
