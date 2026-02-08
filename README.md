@@ -1,31 +1,43 @@
-# Zpl - Esc/Pos Printer
+# ZPL Printer Emulator
 
-Printer emulator for Zpl, Esc/Pos rendering engine. The emulator is based on the [labelary](http://labelary.com/service.html) web service.
+Printer emulator for ZPL (Zebra Programming Language) rendering engine. The emulator is based on the [labelary](http://labelary.com/service.html) web service.
 You can configure print density, label size and the tcp server to listen for any incoming labels.
 
 [Releases](https://github.com/erikn69/ZplEscPrinter/releases/latest)
 
+## Supported ZPL Commands
+
+| Command | Name | Description |
+|---------|------|-------------|
+| `~HS` | Host Status | Returns printer status (3-string response with STX/ETX framing) |
+| `~HQES` | Host Query Error Status | Returns error/warning bitmask flags (configurable via Errors & Warnings page) |
+| `~HI` | Host Identification | Returns printer model and firmware info |
+| `~WC` | Configuration Label | Returns printer configuration |
+| `~WD` | Directory Listing | Returns stored file listing |
+| `~JA` | Cancel All | Cancels all pending formats in the buffer |
+| `~PS` | Print Start | Resumes printing after pause |
+
 ## Installation
 
 #### Windows
-- Download `zpl-escpos-printer-*-setup.exe` from releases
+- Download `zpl-printer-*-setup.exe` from releases
 - Run the installer
 
 #### Linux
 ```bash
 # Debian/Ubuntu
-sudo dpkg -i zpl-escpos-printer_*_amd64.deb
+sudo dpkg -i zpl-printer_*_amd64.deb
 
 # RedHat/CentOS
-sudo rpm -i zpl-escpos-printer-*.x86_64.rpm
+sudo rpm -i zpl-printer-*.x86_64.rpm
 ```
 
 #### macOS
 ```bash
 # Unzip the file
-unzip Zpl-EscPos.Printer-darwin-*.zip
+unzip ZPL.Printer-darwin-*.zip
 # Move to Applications
-mv "Zpl-EscPos Printer.app" /Applications/
+mv "ZPL Printer.app" /Applications/
 ```
 
 ## Development
@@ -37,8 +49,8 @@ mv "Zpl-EscPos Printer.app" /Applications/
 
 ### Installation
 ```bash
-git clone https://github.com/erikn69/ZplEscPrinter.git
-cd ZplEscPrinter
+git clone https://github.com/sshaizkhan/zpl-printer-emulator.git
+cd zpl-printer-emulator
 yarn install  # or: npm install
 ```
 
@@ -51,39 +63,26 @@ yarn make        # Generate multi-OS binaries
 
 *npm equivalent :* `npm start`, `npm run package`, `npm run make`
 
-## New in Version 3.0
-
-The app now emulates Epson ESC/POS. The emulator is based on the [escpos-netprinter](https://github.com/gilbertfl/escpos-netprinter/blob/master/esc2html.php) repo by [@gilbertfl](https://github.com/gilbertfl)/[@mike42](https://github.com/mike42), and can be installed via the binaries/zips on the GitHub Releases page. It currently supports
-
-* Windows:
-  * Squarrel installer (zpl-escpos-printer-**version**-win32-**arch**-setup.exe)
-  * Portable runner (zpl-escpos-printer-portable-**version**.exe)
-  * NuGet package (zpl-escpos-printer-**version**-full.nupkg)
-  * msi installer (TODO)
-* Linux:
-  * Rpm (zpl-escpos-printer-**version**.**arch**.rpm)
-  * Deb (zpl-escpos-printer\_**version**\_**arch**.deb)
-  * Zip (Zpl-EscPos.Printer-linux-**arch**-**version**.zip)
-* Mac:
-  * Zip (Zpl-EscPos.Printer-darwin-**arch**-**version**.zip)
-
-## New in Version 2.0
-
-The app now runs standalone via Electron.
-
 ## References
 * [ZPL Command Support](http://labelary.com/docs.html)
 * [ZPL Web Service](http://labelary.com/service.html)
-* [Esc/Pos Commands](https://escpos.readthedocs.io/en/latest/commands.html)
-* [Esc/Pos receipt print tools](https://github.com/receipt-print-hq/escpos-tools)
+* [Zebra ZPL Programming Guide](https://docs.zebra.com/us/en/printers/software/zpl-pg/c-zpl-zpl-commands.html)
 * [Electron](https://www.electronjs.org)
 * [Electron Forge](https://www.electronforge.io)
 
 ## Release notes
 
+### Version 4.0
+* **Removed** ESC/POS support (ZPL-only emulator)
+* **New** `~HQES` (Host Query Error Status) command with configurable error/warning flags
+* **New** `~JA` (Cancel All) command support
+* **New** `~PS` (Print Start) command support
+* **Improved** `~HS` (Host Status) response with proper field structure per Zebra spec
+* **New** Dedicated Errors & Warnings page for ~HQES emulation
+* **Removed** Promo directory
+
 ### Version 3.0
 * **Refactor** Reworked code
-* **New** Esc/Pos Support
 * **Fix** Bug fixes
 
 ### Version 2.2
@@ -104,27 +103,9 @@ The app now runs standalone via Electron.
 * **New** TCP input buffer size can be configure in settings.
 
 ### Version 1.5
-
 * **New** Support to print multiple labels in one request.
 * **New** Optional setting to keep tcp connection alive.
-
-### Version 1.4.1
-
-* **Fix** Minor fixes
-
-### Version 1.4
-
-* **New** Ability to save labels as image (PNG) or as PDF. (Thanks to [Derek Preston](https://plus.google.com/116997222122087717848/posts))
-
-### Version 1.3
-
-* **Change** Labelary web service call from GET to POST to support large ZPL templates. (Thanks to [pitufo](https://github.com/sbinkert/ZplPrinter/issues/1))
-
-![ZPL Demo](./Promo/zpl.png)
-
-![EscPos Demo](./Promo/escpos.png)
 
 ### Contributing
 
 checkout the project. run `yarn install`. use `yarn start` to run in development mode and use `yarn make` to generate binaries for your OS
-
