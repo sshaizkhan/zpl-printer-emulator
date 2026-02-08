@@ -916,6 +916,22 @@ class LabelDesigner {
     }
 
     // ── ZPL Code Generation ─────────────────────────────────────────────
+
+    /**
+     * Resolve %s placeholders in content using default values or variable names.
+     */
+    _resolveContent(content, variableNames, defaultVariableValues) {
+        if (!variableNames || variableNames.length === 0) return content;
+        let i = 0;
+        return content.replace(/%s/g, () => {
+            const val = (defaultVariableValues && defaultVariableValues[i])
+                ? defaultVariableValues[i]
+                : (variableNames[i] ? '{' + variableNames[i] + '}' : '%s');
+            i++;
+            return val;
+        });
+    }
+
     /**
      * Generate ZPL code from the current template.
      * Converts mm positions/sizes to dots using the configured density (dpmm).
@@ -939,9 +955,10 @@ class LabelDesigner {
                 const orient = orientationMap[t.orientation] || 'N';
                 const hDots = mmToDots(t.fontSize[1]);
                 const wDots = mmToDots(t.fontSize[0]);
+                const fieldData = this._resolveContent(t.content, t.variableNames, t.defaultVariableValues);
                 zpl += '^FO' + xDots + ',' + yDots;
                 zpl += '^A' + t.fontFamily + orient + ',' + hDots + ',' + wDots;
-                zpl += '^FD' + t.content + '^FS\n';
+                zpl += '^FD' + fieldData + '^FS\n';
             } else if (el.type === 'box') {
                 const b = el.box;
                 const wDots = mmToDots(b.size[0]);
@@ -965,6 +982,7 @@ class LabelDesigner {
         const hDots = mmToDots(bc.size[1]);
         const moduleWidth = Math.max(1, Math.round(bc.widthRatio * (parseInt(this.configs.density) || 8)));
         const hrt = bc.showHumanReadableText ? 'Y' : 'N';
+        const content = this._resolveContent(bc.content, bc.variableNames, bc.defaultVariableValues);
         let zpl = '';
 
         zpl += '^FO' + xDots + ',' + yDots;
@@ -975,71 +993,71 @@ class LabelDesigner {
                 zpl += '^BC' + orient + ',' + hDots + ',' + hrt + ',N,N';
                 if (bc.barcodeMode && bc.barcodeMode !== 'NoMode') {
                     const modeChar = bc.barcodeMode.replace('Mode', '>:').charAt(bc.barcodeMode.length - 1);
-                    zpl += '^FD>' + modeChar + bc.content + '^FS\n';
+                    zpl += '^FD>' + modeChar + content + '^FS\n';
                 } else {
-                    zpl += '^FD' + bc.content + '^FS\n';
+                    zpl += '^FD' + content + '^FS\n';
                 }
                 break;
             case 'Code39':
                 zpl += '^BY' + moduleWidth;
                 zpl += '^B3' + orient + ',' + (bc.checkDigit ? 'Y' : 'N') + ',' + hDots + ',' + hrt + ',N';
-                zpl += '^FD' + bc.content + '^FS\n';
+                zpl += '^FD' + content + '^FS\n';
                 break;
             case 'Code93':
                 zpl += '^BY' + moduleWidth;
                 zpl += '^BA' + orient + ',' + hDots + ',' + hrt + ',N';
-                zpl += '^FD' + bc.content + '^FS\n';
+                zpl += '^FD' + content + '^FS\n';
                 break;
             case 'EAN13':
                 zpl += '^BY' + moduleWidth;
                 zpl += '^BE' + orient + ',' + hDots + ',' + hrt + ',N';
-                zpl += '^FD' + bc.content + '^FS\n';
+                zpl += '^FD' + content + '^FS\n';
                 break;
             case 'EAN8':
                 zpl += '^BY' + moduleWidth;
                 zpl += '^B8' + orient + ',' + hDots + ',' + hrt + ',N';
-                zpl += '^FD' + bc.content + '^FS\n';
+                zpl += '^FD' + content + '^FS\n';
                 break;
             case 'UPCA':
                 zpl += '^BY' + moduleWidth;
                 zpl += '^BU' + orient + ',' + hDots + ',' + hrt + ',N';
-                zpl += '^FD' + bc.content + '^FS\n';
+                zpl += '^FD' + content + '^FS\n';
                 break;
             case 'UPCE':
                 zpl += '^BY' + moduleWidth;
                 zpl += '^B9' + orient + ',' + hDots + ',' + hrt + ',N';
-                zpl += '^FD' + bc.content + '^FS\n';
+                zpl += '^FD' + content + '^FS\n';
                 break;
             case 'Interleaved2of5':
                 zpl += '^BY' + moduleWidth;
                 zpl += '^B2' + orient + ',' + hDots + ',' + hrt + ',N';
-                zpl += '^FD' + bc.content + '^FS\n';
+                zpl += '^FD' + content + '^FS\n';
                 break;
             case 'QRCode': {
                 const mag = bc.magnificationFactor || 10;
                 const ecl = ({ 'L': 'L', 'M': 'M', 'Q': 'Q', 'H': 'H' })[bc.errorCorrectionLevel] || 'H';
                 const model = bc.qrCodeModel || 2;
                 zpl += '^BQ' + orient + ',' + model + ',' + mag;
-                zpl += '^FD' + ecl + 'A,' + bc.content + '^FS\n';
+                zpl += '^FD' + ecl + 'A,' + content + '^FS\n';
                 break;
             }
             case 'DataMatrix': {
                 const orient2 = orient;
                 const quality = 200; // ECC 200
                 zpl += '^BX' + orient2 + ',' + (bc.magnificationFactor || 10) + ',' + quality;
-                zpl += '^FD' + bc.content + '^FS\n';
+                zpl += '^FD' + content + '^FS\n';
                 break;
             }
             case 'PDF417':
                 zpl += '^BY' + moduleWidth;
                 zpl += '^B7' + orient + ',' + hDots + ',0,0,0,N';
-                zpl += '^FD' + bc.content + '^FS\n';
+                zpl += '^FD' + content + '^FS\n';
                 break;
             default:
                 // Generic fallback: Code 128
                 zpl += '^BY' + moduleWidth;
                 zpl += '^BC' + orient + ',' + hDots + ',' + hrt + ',N,N';
-                zpl += '^FD' + bc.content + '^FS\n';
+                zpl += '^FD' + content + '^FS\n';
                 break;
         }
         return zpl;
