@@ -42,9 +42,6 @@ const createWindow = () => {
         win.webContents.send('window-focus-change', 'focused');
     });
     win.loadFile('ZPLPrinter/main.html')
-    if(process.env.NODE_ENV === "development"){
-        win.webContents.openDevTools()
-    }
 }
 
 ipcMain.on('select-dir', async (event, arg) => {
