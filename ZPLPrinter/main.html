@@ -87,6 +87,9 @@
                                 <i class="glyphicon glyphicon-remove"></i> Clear
                             </button>
                         </div>
+                        <button id="preview-label-btn" class="btn btn-outline-primary btn-sm" title="Preview via Labelary API (shows actual ZPL rendering)">
+                            <i class="glyphicon glyphicon-eye-open"></i> Preview
+                        </button>
                         <div class="btn-group btn-group-sm ms-auto">
                             <button id="import-template-btn" class="btn btn-outline-info" title="Import Template JSON" data-bs-toggle="modal" data-bs-target="#template-io-modal" data-io-mode="import">
                                 <i class="glyphicon glyphicon-open"></i> Import
@@ -540,6 +543,38 @@ WARNINGS: 1 00000000 00000000</code>
             </div>
         </div>
         <button id="btn-modal-confirm" class="d-none" type="button" data-bs-toggle="modal" data-bs-target="#modal-confirm"></button>
+    </div>
+    <!-- Label Preview Modal -->
+    <div class="modal fade" id="preview-modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header pb-1 pt-1 pe-3 ps-3">
+                    <h5 class="modal-title">
+                        <i class="glyphicon glyphicon-eye-open pe-2"></i>
+                        Label Preview (Labelary API)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <h6 class="fw-semibold mb-2">Rendered Preview</h6>
+                            <div id="preview-image-container" class="border rounded bg-light text-center p-2 overflow-auto" style="min-height: 200px;">
+                                <p class="text-muted">Generating preview...</p>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h6 class="fw-semibold mb-2">Generated ZPL Code</h6>
+                            <textarea id="preview-zpl-code" class="form-control font-monospace" readonly style="height: 450px; font-size: 11px;"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer p-1">
+                    <button id="preview-copy-zpl" type="button" class="btn btn-info btn-sm"><i class="glyphicon glyphicon-copy"></i> Copy ZPL</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><i class="glyphicon glyphicon-remove"></i> Close</button>
+                </div>
+            </div>
+        </div>
     </div>
     <!-- Template Import/Export Modal -->
     <div class="modal fade" id="template-io-modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">

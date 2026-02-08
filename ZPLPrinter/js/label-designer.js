@@ -4,6 +4,26 @@
  * Coordinates are stored in mm with origin at top-left (matching ZPL convention).
  */
 class LabelDesigner {
+    /**
+     * ZPL font-to-CSS mapping.
+     * Font 0 is CG Triumvirate (proportional, similar to Helvetica) on Zebra printers and Labelary.
+     * Fonts 1-8 and A are bitmap/fixed-width fonts.
+     * The widthRatio is the approximate ratio of character width to height for each font
+     * at its default aspect ratio (when ZPL width == height).
+     */
+    static ZPL_FONTS = {
+        '0': { css: 'Helvetica, Arial, sans-serif', widthRatio: 0.55 },
+        '1': { css: '"Courier New", Courier, monospace', widthRatio: 0.6 },
+        '2': { css: '"Courier New", Courier, monospace', widthRatio: 0.6 },
+        '3': { css: '"Courier New", Courier, monospace', widthRatio: 0.6 },
+        '4': { css: '"Courier New", Courier, monospace', widthRatio: 0.6 },
+        '5': { css: '"Courier New", Courier, monospace', widthRatio: 0.6 },
+        '6': { css: '"Courier New", Courier, monospace', widthRatio: 0.6 },
+        '7': { css: '"Courier New", Courier, monospace', widthRatio: 0.6 },
+        '8': { css: '"Courier New", Courier, monospace', widthRatio: 0.6 },
+        'A': { css: '"Courier New", Courier, monospace', widthRatio: 0.6 }
+    };
+
     constructor(canvasId, propsContentId, configs) {
         this.canvasEl = document.getElementById(canvasId);
         this.propsContentEl = document.getElementById(propsContentId);
@@ -247,12 +267,22 @@ class LabelDesigner {
     _renderTextDom(div, el) {
         const t = el.text;
         const fontHeightPx = this._mmToPx(t.fontSize[1]);
+        const fontWidthMm = t.fontSize[0];
+        const fontHeightMm = t.fontSize[1];
+        const fontInfo = LabelDesigner.ZPL_FONTS[t.fontFamily] || LabelDesigner.ZPL_FONTS['0'];
+
         div.style.fontSize = Math.max(8, fontHeightPx) + 'px';
-        div.style.fontFamily = 'monospace';
+        div.style.fontFamily = fontInfo.css;
         div.style.whiteSpace = 'nowrap';
         div.style.lineHeight = '1';
         div.style.color = '#000';
         div.style.userSelect = 'none';
+
+        // Apply horizontal scaling to match ZPL character width.
+        // ZPL fontSize[0] controls individual character width.
+        // We compute the ratio of desired width to the font's natural width.
+        const desiredWidthRatio = fontWidthMm / fontHeightMm;
+        const scaleX = desiredWidthRatio / fontInfo.widthRatio;
 
         // Determine display text: replace %s with defaults or variable names
         let displayText = t.content;
@@ -269,16 +299,27 @@ class LabelDesigner {
 
         div.textContent = displayText;
 
-        // Apply orientation
+        // Build combined transform: scaleX for character width + rotation for orientation
+        let transforms = [];
+        if (Math.abs(scaleX - 1.0) > 0.02) {
+            transforms.push('scaleX(' + scaleX.toFixed(3) + ')');
+        }
+
         if (t.orientation === 'Rotated90') {
-            div.style.transform = 'rotate(90deg)';
+            transforms.push('rotate(90deg)');
             div.style.transformOrigin = 'top left';
         } else if (t.orientation === 'Rotated180') {
-            div.style.transform = 'rotate(180deg)';
+            transforms.push('rotate(180deg)');
             div.style.transformOrigin = 'center center';
         } else if (t.orientation === 'Rotated270') {
-            div.style.transform = 'rotate(270deg)';
+            transforms.push('rotate(270deg)');
             div.style.transformOrigin = 'top left';
+        } else {
+            div.style.transformOrigin = 'left top';
+        }
+
+        if (transforms.length > 0) {
+            div.style.transform = transforms.join(' ');
         }
     }
 
@@ -286,14 +327,30 @@ class LabelDesigner {
         const b = el.box;
         const wPx = this._mmToPx(b.size[0]);
         const hPx = this._mmToPx(b.size[1]);
+        const thickPx = this._mmToPx(b.thickness);
+
+        // ZPL ^GB draws a box where thickness is the border width.
+        // If thickness >= width or height, it's a solid fill.
+        const isSolidW = thickPx >= wPx || b.size[0] <= b.thickness;
+        const isSolidH = thickPx >= hPx || b.size[1] <= b.thickness;
+
         div.style.width = Math.max(2, wPx) + 'px';
         div.style.height = Math.max(2, hPx) + 'px';
-        div.style.backgroundColor = b.color === 'White' ? '#fff' : '#000';
-        div.style.border = '1px solid #000';
         div.style.boxSizing = 'border-box';
 
-        // If it's a thin line, make the solid fill visible
-        if (b.size[0] <= 1 || b.size[1] <= 1) {
+        if (isSolidW || isSolidH) {
+            // Solid fill (line or filled box)
+            div.style.backgroundColor = b.color === 'White' ? '#fff' : '#000';
+            div.style.border = 'none';
+        } else {
+            // Bordered box (frame)
+            div.style.backgroundColor = 'transparent';
+            const borderWidth = Math.max(1, thickPx) + 'px';
+            div.style.border = borderWidth + ' solid ' + (b.color === 'White' ? '#fff' : '#000');
+        }
+
+        // Ensure thin lines remain visible
+        if (b.size[0] <= 0.5 || b.size[1] <= 0.5) {
             div.style.minWidth = '2px';
             div.style.minHeight = '2px';
         }
@@ -853,6 +910,164 @@ class LabelDesigner {
         this.nextId = 1;
         this.renderAll();
         this._renderProperties();
+    }
+
+    // ── ZPL Code Generation ─────────────────────────────────────────────
+    /**
+     * Generate ZPL code from the current template.
+     * Converts mm positions/sizes to dots using the configured density (dpmm).
+     */
+    generateZPL() {
+        const density = parseInt(this.configs.density) || 8; // dots per mm
+        const mmToDots = (mm) => Math.round(mm * density);
+
+        const orientationMap = { 'Normal': 'N', 'Rotated90': 'R', 'Rotated180': 'I', 'Rotated270': 'B' };
+
+        let zpl = '^XA\n';
+        zpl += '^PW' + mmToDots(this.labelWidthMm) + '\n';
+        zpl += '^LL' + mmToDots(this.labelHeightMm) + '\n';
+
+        for (const el of this.elements) {
+            const xDots = mmToDots(el.x);
+            const yDots = mmToDots(el.y);
+
+            if (el.type === 'text') {
+                const t = el.text;
+                const orient = orientationMap[t.orientation] || 'N';
+                const hDots = mmToDots(t.fontSize[1]);
+                const wDots = mmToDots(t.fontSize[0]);
+                zpl += '^FO' + xDots + ',' + yDots;
+                zpl += '^A' + t.fontFamily + orient + ',' + hDots + ',' + wDots;
+                zpl += '^FD' + t.content + '^FS\n';
+            } else if (el.type === 'box') {
+                const b = el.box;
+                const wDots = mmToDots(b.size[0]);
+                const hDots = mmToDots(b.size[1]);
+                const thickDots = Math.max(1, mmToDots(b.thickness));
+                const color = b.color === 'White' ? 'W' : 'B';
+                zpl += '^FO' + xDots + ',' + yDots;
+                zpl += '^GB' + wDots + ',' + hDots + ',' + thickDots + ',' + color + '^FS\n';
+            } else if (el.type === 'barcode') {
+                zpl += this._generateBarcodeZPL(el, xDots, yDots, mmToDots, orientationMap);
+            }
+        }
+
+        zpl += '^XZ';
+        return zpl;
+    }
+
+    _generateBarcodeZPL(el, xDots, yDots, mmToDots, orientationMap) {
+        const bc = el.barcode;
+        const orient = orientationMap[bc.orientation] || 'N';
+        const hDots = mmToDots(bc.size[1]);
+        const moduleWidth = Math.max(1, Math.round(bc.widthRatio * (parseInt(this.configs.density) || 8)));
+        const hrt = bc.showHumanReadableText ? 'Y' : 'N';
+        let zpl = '';
+
+        zpl += '^FO' + xDots + ',' + yDots;
+
+        switch (bc.barcodeType) {
+            case 'Code128':
+                zpl += '^BY' + moduleWidth;
+                zpl += '^BC' + orient + ',' + hDots + ',' + hrt + ',N,N';
+                if (bc.barcodeMode && bc.barcodeMode !== 'NoMode') {
+                    const modeChar = bc.barcodeMode.replace('Mode', '>:').charAt(bc.barcodeMode.length - 1);
+                    zpl += '^FD>' + modeChar + bc.content + '^FS\n';
+                } else {
+                    zpl += '^FD' + bc.content + '^FS\n';
+                }
+                break;
+            case 'Code39':
+                zpl += '^BY' + moduleWidth;
+                zpl += '^B3' + orient + ',' + (bc.checkDigit ? 'Y' : 'N') + ',' + hDots + ',' + hrt + ',N';
+                zpl += '^FD' + bc.content + '^FS\n';
+                break;
+            case 'Code93':
+                zpl += '^BY' + moduleWidth;
+                zpl += '^BA' + orient + ',' + hDots + ',' + hrt + ',N';
+                zpl += '^FD' + bc.content + '^FS\n';
+                break;
+            case 'EAN13':
+                zpl += '^BY' + moduleWidth;
+                zpl += '^BE' + orient + ',' + hDots + ',' + hrt + ',N';
+                zpl += '^FD' + bc.content + '^FS\n';
+                break;
+            case 'EAN8':
+                zpl += '^BY' + moduleWidth;
+                zpl += '^B8' + orient + ',' + hDots + ',' + hrt + ',N';
+                zpl += '^FD' + bc.content + '^FS\n';
+                break;
+            case 'UPCA':
+                zpl += '^BY' + moduleWidth;
+                zpl += '^BU' + orient + ',' + hDots + ',' + hrt + ',N';
+                zpl += '^FD' + bc.content + '^FS\n';
+                break;
+            case 'UPCE':
+                zpl += '^BY' + moduleWidth;
+                zpl += '^B9' + orient + ',' + hDots + ',' + hrt + ',N';
+                zpl += '^FD' + bc.content + '^FS\n';
+                break;
+            case 'Interleaved2of5':
+                zpl += '^BY' + moduleWidth;
+                zpl += '^B2' + orient + ',' + hDots + ',' + hrt + ',N';
+                zpl += '^FD' + bc.content + '^FS\n';
+                break;
+            case 'QRCode': {
+                const mag = bc.magnificationFactor || 10;
+                const ecl = ({ 'L': 'L', 'M': 'M', 'Q': 'Q', 'H': 'H' })[bc.errorCorrectionLevel] || 'H';
+                const model = bc.qrCodeModel || 2;
+                zpl += '^BQ' + orient + ',' + model + ',' + mag;
+                zpl += '^FD' + ecl + 'A,' + bc.content + '^FS\n';
+                break;
+            }
+            case 'DataMatrix': {
+                const orient2 = orient;
+                const quality = 200; // ECC 200
+                zpl += '^BX' + orient2 + ',' + (bc.magnificationFactor || 10) + ',' + quality;
+                zpl += '^FD' + bc.content + '^FS\n';
+                break;
+            }
+            case 'PDF417':
+                zpl += '^BY' + moduleWidth;
+                zpl += '^B7' + orient + ',' + hDots + ',0,0,0,N';
+                zpl += '^FD' + bc.content + '^FS\n';
+                break;
+            default:
+                // Generic fallback: Code 128
+                zpl += '^BY' + moduleWidth;
+                zpl += '^BC' + orient + ',' + hDots + ',' + hrt + ',N,N';
+                zpl += '^FD' + bc.content + '^FS\n';
+                break;
+        }
+        return zpl;
+    }
+
+    /**
+     * Generate ZPL and render preview via Labelary API.
+     * Returns a promise that resolves with the image blob.
+     */
+    async previewViaLabelary() {
+        const zplCode = this.generateZPL();
+        const density = this.configs.density || '8';
+        const factor = (this.configs.unit === '1') ? 1 : (this.configs.unit === '2' ? 2.54 : (this.configs.unit === '3' ? 25.4 : 96.5));
+        const width = Math.round(parseFloat(this.configs.width) * 1000 / factor) / 1000;
+        const height = Math.round(parseFloat(this.configs.height) * 1000 / factor) / 1000;
+
+        const apiUrl = 'http://api.labelary.com/v1/printers/' + density + 'dpmm/labels/' +
+            (width > 15.0 ? 15 : width) + 'x' + height + '/0/';
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            body: zplCode,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error('Labelary API error (status ' + response.status + '): ' + text);
+        }
+
+        return { blob: await response.blob(), zplCode };
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────

@@ -633,6 +633,36 @@ function initDesigner() {
         }
     });
 
+    // Preview via Labelary
+    $('#preview-label-btn').on('click', async function () {
+        if (designer.elements.length === 0) {
+            notify('Add elements to the template first.', 'warning-sign', 'warning');
+            return;
+        }
+        const previewModal = new Bootstrap.Modal(document.getElementById('preview-modal'));
+        $('#preview-image-container').html('<p class="text-muted">Generating preview...</p>');
+        $('#preview-zpl-code').val('');
+        previewModal.show();
+        try {
+            const { blob, zplCode } = await designer.previewViaLabelary();
+            const imgUrl = window.URL.createObjectURL(blob);
+            $('#preview-image-container').html('<img src="' + imgUrl + '" style="max-width:100%; border: 1px solid #ccc;">');
+            $('#preview-zpl-code').val(zplCode);
+        } catch (e) {
+            $('#preview-image-container').html('<p class="text-danger">Preview failed: ' + e.message + '</p>');
+            // Still show the ZPL code for debugging
+            try { $('#preview-zpl-code').val(designer.generateZPL()); } catch (e2) {}
+        }
+    });
+
+    // Copy ZPL from preview
+    $('#preview-copy-zpl').on('click', function () {
+        const textarea = document.getElementById('preview-zpl-code');
+        textarea.select();
+        document.execCommand('copy');
+        notify('ZPL code copied to clipboard.', 'copy', 'info');
+    });
+
     // Copy to clipboard
     $('#template-io-copy').on('click', function () {
         const textarea = document.getElementById('template-io-data');
