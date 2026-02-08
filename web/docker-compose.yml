@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  zpl-printer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zpl-printer-emulator
+    ports:
+      - "4000:4000"   # Web UI
+      - "9100:9100"   # ZPL TCP printer port
+    volumes:
+      - zpl-config:/app/server
+      - zpl-labels:/app/labels
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/config"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  zpl-config:
+    driver: local
+  zpl-labels:
+    driver: local
