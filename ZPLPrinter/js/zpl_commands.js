@@ -50,6 +50,22 @@ class ZplCommands {
     return true;
   }
 
+  /**
+   * Extract all known tilde commands and separate label data from mixed input.
+   * Handles cases where multiple commands are concatenated (e.g., "~JA~HS")
+   * or commands are mixed with label data (e.g., "^XA...^XZ~HS").
+   */
+  extractCommands(data) {
+    const commandPattern = /~(HQES|HS|HI|WC|WD|JA|PS)/gi;
+    const commands = [];
+    let match;
+    while ((match = commandPattern.exec(data)) !== null) {
+      commands.push('~' + match[1].toUpperCase());
+    }
+    const labelData = data.replace(commandPattern, '').trim();
+    return { commands, labelData };
+  }
+
   getResponse(data) {
     const cmd = data.trim().toUpperCase();
     switch (cmd) {

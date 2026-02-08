@@ -8,6 +8,7 @@ const net = require('net');
 let clientSocketInfo;
 let server;
 let configs = {};
+let designer = null;
 const zplCommands = new ZplCommands(configs);
 
 const defaults = {
@@ -74,6 +75,7 @@ $(document).ready(function () {
 
     initEvents();
     initConfigs();
+    initDesigner();
 });
 function getSize(width, height) {
     const defaultWidth = 386;
@@ -139,6 +141,7 @@ async function zpl(data){
     data = data.toString('utf8');
     try{ data = base64DecodeUnicode(data.trim()); }catch(e){}
 
+    // Fast path: exact single command match
     const cmdResult = zplCommands.matchCommand(data);
     if (cmdResult) {
         if (cmdResult.action) {
@@ -153,6 +156,39 @@ async function zpl(data){
         return response;
     }
 
+    // Extract tilde commands from mixed input (e.g., "~JA~HS" or "^XA...^XZ~HS")
+    const { commands, labelData } = zplCommands.extractCommands(data);
+
+    let responseBuffers = [];
+
+    // Process any tilde commands found
+    for (const cmd of commands) {
+        const result = zplCommands.matchCommand(cmd);
+        if (result) {
+            if (result.action) {
+                result.action(configs, notify);
+                notify('Command <b>' + cmd + '</b> executed: ' + result.message);
+            } else {
+                const response = zplCommands.getResponse(cmd);
+                console.log('Command: ' + response.toString('utf8'));
+                notify('A response has been sent to the received internal command.');
+                responseBuffers.push(response);
+            }
+        }
+    }
+
+    // Process label data (use extracted labelData if commands were found, otherwise original data)
+    const dataToRender = commands.length > 0 ? labelData : data;
+    if (dataToRender && dataToRender.trim().length > 0) {
+        await renderLabels(dataToRender);
+    }
+
+    if (responseBuffers.length > 0) {
+        return Buffer.concat(responseBuffers);
+    }
+    return null;
+}
+async function renderLabels(data) {
     const zpls = data.split(/\^XZ|\^xz/);
     const factor = configs.unit === '1' ? 1 : (configs.unit === '2' ? 2.54 : (configs.unit === '3' ? 25.4 : 96.5));
     const width = Math.round(parseFloat(configs.width) * 1000 / factor) / 1000;
@@ -190,7 +226,6 @@ async function zpl(data){
             await saveLabel(zpl, "raw", counter);
         }
     }
-    return null;
 }
 
 async function displayZplImage(api_url, zpl, width, height) {
@@ -511,6 +546,157 @@ function toggleSwitch(group) {
 
     $(radios[first?1:0]).prop('checked', true).trigger('change');
 }
+// ── Label Template Designer ──────────────────────────────────────────
+function initDesigner() {
+    designer = new LabelDesigner('designer-canvas', 'props-content', configs);
+    updateDesignerStatus();
+
+    // Add element buttons
+    $('#add-text-el').on('click', function () {
+        designer.addTextElement();
+        updateDesignerStatus();
+    });
+    $('#add-box-el').on('click', function () {
+        designer.addBoxElement();
+        updateDesignerStatus();
+    });
+    $('#add-barcode-el').on('click', function () {
+        designer.addBarcodeElement();
+        updateDesignerStatus();
+    });
+
+    // Grid toggle
+    $('#toggle-grid-btn').on('click', function () {
+        designer.toggleGrid();
+        $(this).toggleClass('active');
+    });
+
+    // Delete selected element
+    $('#delete-el-btn').on('click', function () {
+        if (designer.selectedElement) {
+            designer.deleteElement(designer.selectedElement);
+            updateDesignerStatus();
+        }
+    });
+
+    // Clear all
+    $('#clear-all-btn').on('click', function () {
+        if (designer.elements.length === 0) return;
+        if (confirm('Remove all elements from the canvas?')) {
+            designer.clearAll();
+            updateDesignerStatus();
+        }
+    });
+
+    // Template name
+    $('#template-name').on('input', function () {
+        designer.templateName = $(this).val();
+    });
+
+    // Export
+    $('#export-template-btn').on('click', function () {
+        designer.templateName = $('#template-name').val() || '';
+        const json = designer.exportTemplate();
+        const text = JSON.stringify(json, null, 2);
+        $('#template-io-data').val(text);
+        $('#template-io-label').text('Export Template');
+        $('#template-io-action').hide();
+        $('#template-io-copy').removeClass('d-none').show();
+        const modal = new Bootstrap.Modal(document.getElementById('template-io-modal'));
+        modal.show();
+    });
+
+    // Import button opens modal in import mode
+    $('#import-template-btn').on('click', function () {
+        $('#template-io-data').val('');
+        $('#template-io-label').text('Import Template');
+        $('#template-io-action').show();
+        $('#template-io-action-label').text('Import');
+        $('#template-io-copy').addClass('d-none');
+    });
+
+    // Import action
+    $('#template-io-action').on('click', function () {
+        const text = $('#template-io-data').val();
+        if (!text || !text.trim()) {
+            notify('Please paste template JSON data.', 'warning-sign', 'warning');
+            return;
+        }
+        try {
+            designer.importTemplate(text);
+            $('#template-name').val(designer.templateName);
+            updateDesignerStatus();
+            Bootstrap.Modal.getInstance(document.getElementById('template-io-modal')).hide();
+            notify('Template imported successfully with ' + designer.elements.length + ' elements.', 'ok', 'success');
+        } catch (e) {
+            notify('Import error: ' + e.message, 'remove-sign', 'danger', 5000);
+        }
+    });
+
+    // Preview via Labelary
+    $('#preview-label-btn').on('click', async function () {
+        if (designer.elements.length === 0) {
+            notify('Add elements to the template first.', 'warning-sign', 'warning');
+            return;
+        }
+        const previewModal = new Bootstrap.Modal(document.getElementById('preview-modal'));
+        $('#preview-image-container').html('<p class="text-muted">Generating preview...</p>');
+        $('#preview-zpl-code').val('');
+        previewModal.show();
+        try {
+            const { blob, zplCode } = await designer.previewViaLabelary();
+            const imgUrl = window.URL.createObjectURL(blob);
+            $('#preview-image-container').html('<img src="' + imgUrl + '" style="max-width:100%; border: 1px solid #ccc;">');
+            $('#preview-zpl-code').val(zplCode);
+        } catch (e) {
+            $('#preview-image-container').html('<p class="text-danger">Preview failed: ' + e.message + '</p>');
+            // Still show the ZPL code for debugging
+            try { $('#preview-zpl-code').val(designer.generateZPL()); } catch (e2) {}
+        }
+    });
+
+    // Copy ZPL from preview
+    $('#preview-copy-zpl').on('click', function () {
+        const textarea = document.getElementById('preview-zpl-code');
+        textarea.select();
+        document.execCommand('copy');
+        notify('ZPL code copied to clipboard.', 'copy', 'info');
+    });
+
+    // Copy to clipboard
+    $('#template-io-copy').on('click', function () {
+        const textarea = document.getElementById('template-io-data');
+        textarea.select();
+        document.execCommand('copy');
+        notify('Template JSON copied to clipboard.', 'copy', 'info');
+    });
+
+    // Update designer when switching to designer tab
+    $('button[data-bs-target="#designer-pane"]').on('shown.bs.tab', function () {
+        designer.updateLabelSize();
+        updateDesignerStatus();
+    });
+
+    // Also open settings from designer tab
+    $('#designer-settings-btn').on('click', function () {
+        if ($('#isOn').is(':checked')) {
+            toggleSwitch('#on_off');
+        }
+        initConfigs($('#settings-window'));
+    });
+}
+
+function updateDesignerStatus() {
+    if (!designer) return;
+    const unit = configs.unit || '1';
+    const unitLabel = unit === '1' ? 'in' : (unit === '2' ? 'cm' : (unit === '3' ? 'mm' : 'px'));
+    $('#designer-label-size').text(
+        (configs.width || '4') + ' x ' + (configs.height || '6') + ' ' + unitLabel +
+        ' (' + designer.labelWidthMm.toFixed(1) + ' x ' + designer.labelHeightMm.toFixed(1) + ' mm)'
+    );
+    $('#designer-el-count').text(designer.elements.length);
+}
+
 // Save configs in local storage
 function saveConfigs(context) {
     context = context || $('body');
@@ -534,6 +720,13 @@ function saveConfigs(context) {
 
     notify('Printer settings changes successfully saved', 'cog', 'info');
     $('.btn-close-save-settings').trigger('click');
+
+    // Update designer canvas if label size or density changed
+    if (designer) {
+        designer.configs = configs;
+        designer.updateLabelSize();
+        updateDesignerStatus();
+    }
 }
 // Init/load configs from local storage
 function initConfigs(context) {
