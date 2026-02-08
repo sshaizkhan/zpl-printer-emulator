@@ -141,6 +141,7 @@ async function zpl(data){
     data = data.toString('utf8');
     try{ data = base64DecodeUnicode(data.trim()); }catch(e){}
 
+    // Fast path: exact single command match
     const cmdResult = zplCommands.matchCommand(data);
     if (cmdResult) {
         if (cmdResult.action) {
@@ -155,6 +156,39 @@ async function zpl(data){
         return response;
     }
 
+    // Extract tilde commands from mixed input (e.g., "~JA~HS" or "^XA...^XZ~HS")
+    const { commands, labelData } = zplCommands.extractCommands(data);
+
+    let responseBuffers = [];
+
+    // Process any tilde commands found
+    for (const cmd of commands) {
+        const result = zplCommands.matchCommand(cmd);
+        if (result) {
+            if (result.action) {
+                result.action(configs, notify);
+                notify('Command <b>' + cmd + '</b> executed: ' + result.message);
+            } else {
+                const response = zplCommands.getResponse(cmd);
+                console.log('Command: ' + response.toString('utf8'));
+                notify('A response has been sent to the received internal command.');
+                responseBuffers.push(response);
+            }
+        }
+    }
+
+    // Process label data (use extracted labelData if commands were found, otherwise original data)
+    const dataToRender = commands.length > 0 ? labelData : data;
+    if (dataToRender && dataToRender.trim().length > 0) {
+        await renderLabels(dataToRender);
+    }
+
+    if (responseBuffers.length > 0) {
+        return Buffer.concat(responseBuffers);
+    }
+    return null;
+}
+async function renderLabels(data) {
     const zpls = data.split(/\^XZ|\^xz/);
     const factor = configs.unit === '1' ? 1 : (configs.unit === '2' ? 2.54 : (configs.unit === '3' ? 25.4 : 96.5));
     const width = Math.round(parseFloat(configs.width) * 1000 / factor) / 1000;
@@ -192,7 +226,6 @@ async function zpl(data){
             await saveLabel(zpl, "raw", counter);
         }
     }
-    return null;
 }
 
 async function displayZplImage(api_url, zpl, width, height) {
