@@ -278,11 +278,14 @@ class LabelDesigner {
         div.style.color = '#000';
         div.style.userSelect = 'none';
 
-        // Apply horizontal scaling to match ZPL character width.
-        // ZPL fontSize[0] controls individual character width.
-        // We compute the ratio of desired width to the font's natural width.
-        const desiredWidthRatio = fontWidthMm / fontHeightMm;
-        const scaleX = desiredWidthRatio / fontInfo.widthRatio;
+        // In ZPL, when fontSize width == height, the font renders at its natural
+        // proportions (no distortion). Only apply horizontal scaling when width
+        // explicitly differs from height, indicating intentional character stretching.
+        let scaleX = 1.0;
+        if (fontWidthMm > 0 && fontHeightMm > 0 && Math.abs(fontWidthMm - fontHeightMm) > 0.01) {
+            const desiredWidthRatio = fontWidthMm / fontHeightMm;
+            scaleX = desiredWidthRatio / fontInfo.widthRatio;
+        }
 
         // Determine display text: replace %s with defaults or variable names
         let displayText = t.content;
