@@ -58,6 +58,7 @@ const config = {
         },
         {
             name: "@pengx17/electron-forge-maker-appimage",
+            platforms: ['linux'],
             config: {
                 options: {
                     icon: path.resolve(iconDir, '512x512.png')
