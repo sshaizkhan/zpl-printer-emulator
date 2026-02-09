@@ -40,6 +40,98 @@ unzip ZPL.Printer-darwin-*.zip
 mv "ZPL Printer.app" /Applications/
 ```
 
+## Docker Deployment
+
+The project supports both web application and desktop app server modes via Docker.
+
+### Prerequisites
+- **Docker** 20.10+
+- **Docker Compose** 2.0+
+
+### Quick Start
+
+#### Web Application Mode (Default)
+```bash
+# Start web app with default profile
+docker compose --profile web up -d
+
+# Or explicitly
+docker compose up -d zpl-printer-web
+```
+
+Access the web UI at `http://localhost:4000` and TCP port at `9100`.
+
+#### Desktop App Server Mode (Headless)
+```bash
+# Start desktop server mode
+docker compose --profile desktop up -d zpl-printer-desktop
+```
+
+This runs the desktop app's TCP server functionality without the GUI.
+
+### Configuration
+
+#### Environment Variables
+
+**Web App:**
+- `WEB_PORT` - Web UI port (default: 4000)
+- `TCP_PORT` - ZPL TCP port (default: 9100)
+
+**Desktop Server:**
+- `TCP_PORT` - ZPL TCP port (default: 9100)
+- `HOST` - Bind address (default: 0.0.0.0)
+- `PORT` - TCP port (default: 9100)
+- `IS_ON` - Enable server (default: true)
+- `KEEP_TCP_SOCKET` - Keep connections alive (default: true)
+- `SAVE_LABELS` - Save labels to disk (default: false)
+- `LABELS_PATH` - Path to save labels (default: /app/labels)
+- `DENSITY` - Print density (default: 8)
+- `WIDTH` - Label width (default: 4)
+- `HEIGHT` - Label height (default: 6)
+- `UNIT` - Unit type (default: 1)
+
+#### Custom Ports
+```bash
+# Use custom ports
+WEB_PORT=5000 TCP_PORT=9200 docker compose --profile web up -d
+```
+
+#### Volumes
+- `zpl-config` - Web app configuration storage
+- `zpl-labels` - Saved labels storage
+
+### Building Images
+
+```bash
+# Build web app
+docker build --build-arg APP_MODE=web -t zpl-printer-web .
+
+# Build desktop server
+docker build --build-arg APP_MODE=desktop -t zpl-printer-desktop .
+```
+
+### Docker Compose Examples
+
+```yaml
+# docker-compose.override.yml (optional)
+version: '3.8'
+services:
+  zpl-printer-web:
+    environment:
+      - PORT=4000
+    ports:
+      - "4000:4000"
+      - "9100:9100"
+  
+  zpl-printer-desktop:
+    environment:
+      - PORT=9100
+      - SAVE_LABELS=true
+      - DENSITY=12
+    ports:
+      - "9100:9100"
+```
+
 ## Development
 
 ### Prerequisites

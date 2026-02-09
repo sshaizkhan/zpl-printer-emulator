@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # Web application mode
+  zpl-printer-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_MODE: web
+    container_name: zpl-printer-emulator-web
+    network_mode: host
+    volumes:
+      - zpl-config:/app/server
+      - zpl-labels:/app/labels
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - HOST=0.0.0.0
+      - TCP_PORT=9100
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/config"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    profiles:
+      - web
+      - default
+
+  # Desktop app server mode (headless)
+  zpl-printer-desktop:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_MODE: desktop
+    container_name: zpl-printer-emulator-desktop
+    network_mode: host
+    volumes:
+      - zpl-labels:/app/labels
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=9100
+      - IS_ON=true
+      - KEEP_TCP_SOCKET=true
+      - SAVE_LABELS=${SAVE_LABELS:-false}
+      - LABELS_PATH=/app/labels
+      - DENSITY=${DENSITY:-8}
+      - WIDTH=${WIDTH:-4}
+      - HEIGHT=${HEIGHT:-6}
+      - UNIT=${UNIT:-1}
+    restart: unless-stopped
+    profiles:
+      - desktop
+
+volumes:
+  zpl-config:
+    driver: local
+  zpl-labels:
+    driver: local
+

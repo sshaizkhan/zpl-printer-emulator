@@ -1,0 +1,27 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+README.md
+.env
+*.md
+.DS_Store
+.vscode
+.idea
+*.log
+dist
+build
+coverage
+.nyc_output
+
+# Exclude web node_modules but keep structure
+web/client/node_modules
+web/server/node_modules
+web/node_modules
+
+# Keep necessary files
+!web/client/package.json
+!web/server/package.json
+!web/package.json
+!package.json
+
