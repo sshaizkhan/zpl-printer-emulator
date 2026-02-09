@@ -55,6 +55,14 @@ const config = {
                     scalable: path.resolve(iconDir, 'icon.svg')
                 }
             }
+        },
+        {
+            name: "@electron-forge/maker-appimage",
+            config: {
+                options: {
+                    icon: path.resolve(iconDir, '512x512.png')
+                }
+            }
         }
     ],
     publishers: [

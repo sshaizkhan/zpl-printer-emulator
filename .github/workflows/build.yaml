@@ -164,6 +164,7 @@ jobs:
             out/make/**/*.nupkg
             out/make/**/*.rpm
             out/make/**/*.zip
+            out/make/**/*.AppImage
             out/make/**/RELEASES
             out/make/**/*portable*.exe
           retention-days: 1
@@ -184,8 +185,8 @@ jobs:
           mkdir -p release-files
           # Copy setup installers (architecture-specific, keep all)
           find artifacts -type f -name "*setup*.exe" -exec cp {} release-files/ \;
-          # Copy other platform files (deb, dmg, rpm, zip)
-          find artifacts -type f \( -name "*.deb" -o -name "*.dmg" -o -name "*.rpm" -o -name "*.zip" \) -exec cp {} release-files/ \;
+          # Copy other platform files (deb, dmg, rpm, zip, AppImage)
+          find artifacts -type f \( -name "*.deb" -o -name "*.dmg" -o -name "*.rpm" -o -name "*.zip" -o -name "*.AppImage" \) -exec cp {} release-files/ \;
           # Handle duplicates: portable exe, RELEASES, .nupkg (prefer x64, keep only one)
           PORTABLE=$(find artifacts -type f -name "*portable*.exe" | grep -E "(x64|windows-latest-x64)" | head -1)
           if [ -z "$PORTABLE" ]; then
