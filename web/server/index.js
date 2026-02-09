@@ -148,12 +148,24 @@ async function fetchPdf(zplData, width, height, density) {
 // ── ZPL Processing ───────────────────────────────────────────────────
 async function processZpl(data) {
   let textData = data.toString('utf8');
-  try {
-    textData = base64DecodeUnicode(textData.trim());
-  } catch (e) {
-    // Not base64
+
+  // Only try base64 decode if data doesn't look like ZPL commands or labels
+  // ZPL commands start with ~ or ^, so skip base64 decode for those
+  const trimmed = textData.trim();
+  if (!trimmed.startsWith('~') && !trimmed.startsWith('^')) {
+    try {
+      const decoded = base64DecodeUnicode(trimmed);
+      // Validate that decoded result looks like ZPL (contains ~ or ^)
+      // If it does, use decoded version; otherwise keep original
+      if (decoded.includes('~') || decoded.includes('^')) {
+        textData = decoded;
+      }
+    } catch (e) {
+      // Not base64
+    }
   }
 
+  // Fast path: exact single command match
   const cmdResult = zplCommands.matchCommand(textData);
   if (cmdResult) {
     if (cmdResult.action) {
@@ -166,9 +178,12 @@ async function processZpl(data) {
     return Buffer.from(response, 'utf8');
   }
 
+  // Extract tilde commands from mixed input (e.g., "~JA~HS" or "^XA...^XZ~HS")
   const { commands, labelData } = zplCommands.extractCommands(textData);
+
   let responseBuffers = [];
 
+  // Process any tilde commands found
   for (const cmd of commands) {
     const result = zplCommands.matchCommand(cmd);
     if (result) {
@@ -183,6 +198,7 @@ async function processZpl(data) {
     }
   }
 
+  // Process label data (use extracted labelData if commands were found, otherwise original data)
   const dataToRender = commands.length > 0 ? labelData : textData;
   if (dataToRender && dataToRender.trim().length > 0) {
     await renderLabels(dataToRender);
