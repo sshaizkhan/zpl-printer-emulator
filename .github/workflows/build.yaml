@@ -122,9 +122,9 @@ jobs:
         shell: pwsh
         run: |
           $VERSION = "${{ steps.version.outputs.version }}"
-          $content = Get-Content package.json -Raw
-          $content = $content -replace '"version": "[^"]*"', "`"version`: `"$VERSION`""
-          Set-Content package.json -Value $content -NoNewline
+          $json = Get-Content package.json -Raw | ConvertFrom-Json
+          $json.version = $VERSION
+          $json | ConvertTo-Json -Depth 100 | Set-Content package.json
           Write-Host "Updated package.json version to $VERSION"
       - name: Install (Linux/macOS)
         if: runner.os != 'Windows'
@@ -184,27 +184,30 @@ jobs:
         run: |
           mkdir -p release-files
           # Copy setup installers (architecture-specific, keep all)
-          find artifacts -type f -name "*setup*.exe" -exec cp {} release-files/ \;
+          find artifacts -type f -name "*setup*.exe" -exec cp {} release-files/ \; 2>/dev/null || true
           # Copy other platform files (deb, dmg, rpm, zip, AppImage)
-          find artifacts -type f \( -name "*.deb" -o -name "*.dmg" -o -name "*.rpm" -o -name "*.zip" -o -name "*.AppImage" \) -exec cp {} release-files/ \;
+          find artifacts -type f \( -name "*.deb" -o -name "*.dmg" -o -name "*.rpm" -o -name "*.zip" -o -name "*.AppImage" \) -exec cp {} release-files/ \; 2>/dev/null || true
           # Handle duplicates: portable exe, RELEASES, .nupkg (prefer x64, keep only one)
-          PORTABLE=$(find artifacts -type f -name "*portable*.exe" | grep -E "(x64|windows-latest-x64)" | head -1)
+          PORTABLE=$(find artifacts -type f -name "*portable*.exe" 2>/dev/null | grep -E "(x64|windows-latest-x64)" | head -1)
           if [ -z "$PORTABLE" ]; then
-            PORTABLE=$(find artifacts -type f -name "*portable*.exe" | head -1)
+            PORTABLE=$(find artifacts -type f -name "*portable*.exe" 2>/dev/null | head -1)
           fi
-          [ -n "$PORTABLE" ] && cp "$PORTABLE" release-files/
+          [ -n "$PORTABLE" ] && cp "$PORTABLE" release-files/ || true
           
-          RELEASES=$(find artifacts -type f -name "RELEASES" | grep -E "(x64|windows-latest-x64)" | head -1)
+          RELEASES=$(find artifacts -type f -name "RELEASES" 2>/dev/null | grep -E "(x64|windows-latest-x64)" | head -1)
           if [ -z "$RELEASES" ]; then
-            RELEASES=$(find artifacts -type f -name "RELEASES" | head -1)
+            RELEASES=$(find artifacts -type f -name "RELEASES" 2>/dev/null | head -1)
           fi
-          [ -n "$RELEASES" ] && cp "$RELEASES" release-files/
+          [ -n "$RELEASES" ] && cp "$RELEASES" release-files/ || true
           
-          NUPKG=$(find artifacts -type f -name "*.nupkg" | grep -E "(x64|windows-latest-x64)" | head -1)
+          NUPKG=$(find artifacts -type f -name "*.nupkg" 2>/dev/null | grep -E "(x64|windows-latest-x64)" | head -1)
           if [ -z "$NUPKG" ]; then
-            NUPKG=$(find artifacts -type f -name "*.nupkg" | head -1)
+            NUPKG=$(find artifacts -type f -name "*.nupkg" 2>/dev/null | head -1)
           fi
-          [ -n "$NUPKG" ] && cp "$NUPKG" release-files/
+          [ -n "$NUPKG" ] && cp "$NUPKG" release-files/ || true
+          
+          echo "Release files prepared:"
+          ls -la release-files/ || echo "No files found in release-files/"
       - name: Create Release
         uses: softprops/action-gh-release@v1
         env:
