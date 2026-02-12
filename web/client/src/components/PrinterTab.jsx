@@ -1,9 +1,10 @@
 import useConfigStore from '../store/configStore';
-import { Image, Clock, Download, Maximize2 } from 'lucide-react';
+import { Image, Clock, Download, Maximize2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 export default function PrinterTab() {
-  const { labels } = useConfigStore();
+  const { activePrinterId, labelsByPrinter } = useConfigStore();
+  const labels = labelsByPrinter[activePrinterId] || [];
   const [selectedLabel, setSelectedLabel] = useState(null);
 
   const handleDownload = (label) => {
@@ -11,6 +12,11 @@ export default function PrinterTab() {
     a.href = label.image;
     a.download = `label-${label.id}.png`;
     a.click();
+  };
+
+  const handleDelete = async (label) => {
+    await fetch(`/api/printers/${activePrinterId}/labels/${label.id}`, { method: 'DELETE' });
+    if (selectedLabel?.id === label.id) setSelectedLabel(null);
   };
 
   return (
@@ -74,6 +80,13 @@ export default function PrinterTab() {
                     >
                       <Download size={16} className="text-gray-700" />
                     </button>
+                    <button
+                      onClick={() => handleDelete(label)}
+                      className="rounded-lg bg-white/90 p-2 shadow-sm hover:bg-red-50"
+                      title="Delete"
+                    >
+                      <Trash2 size={16} className="text-red-500" />
+                    </button>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 border-t border-gray-100 px-2 py-1.5 dark:border-gray-700">
@@ -106,6 +119,10 @@ export default function PrinterTab() {
                 <button onClick={() => handleDownload(selectedLabel)} className="btn-secondary text-xs">
                   <Download size={14} />
                   Download PNG
+                </button>
+                <button onClick={() => handleDelete(selectedLabel)} className="btn-danger text-xs">
+                  <Trash2 size={14} />
+                  Delete
                 </button>
                 <button onClick={() => setSelectedLabel(null)} className="btn-ghost text-xs">
                   Close

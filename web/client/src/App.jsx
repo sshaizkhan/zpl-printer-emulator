@@ -11,10 +11,25 @@ export default function App() {
   const { activeTab, darkMode } = useConfigStore();
 
   useEffect(() => {
-    // Fetch initial labels
-    fetch('/api/labels')
+    // Fetch initial printers state
+    fetch('/api/printers')
       .then((r) => r.json())
-      .then((labels) => useConfigStore.getState().setLabels(labels))
+      .then((data) => {
+        const store = useConfigStore.getState();
+        store.setPrintersState({
+          printers: data.printers,
+          activePrinterId: data.activePrinterId,
+          tcpStatuses: data.tcpStatuses,
+          labelHistories: {},
+        });
+        // Load labels for each printer
+        data.printers.forEach((p) => {
+          fetch(`/api/printers/${p.id}/labels`)
+            .then((r) => r.json())
+            .then((labels) => useConfigStore.getState().setLabels(p.id, labels))
+            .catch(() => {});
+        });
+      })
       .catch(() => {});
   }, []);
 

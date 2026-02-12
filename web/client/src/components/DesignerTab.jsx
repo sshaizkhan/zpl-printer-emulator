@@ -27,7 +27,11 @@ import {
 import Modal from './Modal';
 
 export default function DesignerTab() {
-  const { configs } = useConfigStore();
+  const configs = useConfigStore((s) => {
+    const printers = s.printers;
+    const id = s.activePrinterId;
+    return printers.find((p) => p.id === id) || printers[0] || {};
+  });
   const [elements, setElements] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [showGrid, setShowGrid] = useState(false);

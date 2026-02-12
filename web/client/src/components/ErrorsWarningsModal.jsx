@@ -3,13 +3,15 @@ import useConfigStore from '../store/configStore';
 import Modal from './Modal';
 import { AlertTriangle, Save } from 'lucide-react';
 
-export default function ErrorsWarningsModal({ onClose }) {
-  const { configs } = useConfigStore();
-  const [form, setForm] = useState({ ...configs });
+export default function ErrorsWarningsModal({ printerId, onClose }) {
+  const { printers } = useConfigStore();
+  const printer = printers.find((p) => p.id === printerId) || {};
+  const [form, setForm] = useState({ ...printer });
 
   useEffect(() => {
-    setForm({ ...configs });
-  }, [configs]);
+    const p = printers.find((p) => p.id === printerId) || {};
+    setForm({ ...p });
+  }, [printers, printerId]);
 
   const toggle = (key) => setForm((f) => ({ ...f, [key]: !f[key] }));
 
@@ -38,7 +40,7 @@ export default function ErrorsWarningsModal({ onClose }) {
   }, [form]);
 
   const handleSave = async () => {
-    await fetch('/api/config', {
+    await fetch(`/api/printers/${printerId}/config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),

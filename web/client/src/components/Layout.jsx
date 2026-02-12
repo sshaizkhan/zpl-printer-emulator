@@ -15,25 +15,64 @@ import {
   Sun,
   Trash2,
   Activity,
+  Plus,
+  X,
 } from 'lucide-react';
 
 export default function Layout({ children }) {
-  const { activeTab, setActiveTab, tcpStatus, configs, darkMode, toggleDarkMode, labels, clearLabels } =
-    useConfigStore();
+  const {
+    activeTab,
+    setActiveTab,
+    printers,
+    activePrinterId,
+    setActivePrinterId,
+    tcpStatuses,
+    labelsByPrinter,
+    darkMode,
+    toggleDarkMode,
+  } = useConfigStore();
+
   const [showSettings, setShowSettings] = useState(false);
   const [showTest, setShowTest] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
 
+  const activePrinter = printers.find((p) => p.id === activePrinterId) || printers[0] || {};
+  const activeTcpStatus = tcpStatuses[activePrinterId] || { running: false };
+  const activeLabels = labelsByPrinter[activePrinterId] || [];
+
   const handleToggleTcp = async () => {
-    const endpoint = tcpStatus.running ? '/api/tcp/stop' : '/api/tcp/start';
+    if (!activePrinterId) return;
+    const endpoint = activeTcpStatus.running
+      ? `/api/printers/${activePrinterId}/tcp/stop`
+      : `/api/printers/${activePrinterId}/tcp/start`;
     await fetch(endpoint, { method: 'POST' });
   };
 
   const handleClearLabels = async () => {
-    if (labels.length === 0) return;
-    if (confirm(`Remove ${labels.length} label${labels.length > 1 ? 's' : ''}?`)) {
-      await fetch('/api/labels', { method: 'DELETE' });
+    if (activeLabels.length === 0 || !activePrinterId) return;
+    if (confirm(`Remove ${activeLabels.length} label${activeLabels.length > 1 ? 's' : ''}?`)) {
+      await fetch(`/api/printers/${activePrinterId}/labels`, { method: 'DELETE' });
     }
+  };
+
+  const handleAddPrinter = async () => {
+    const res = await fetch('/api/printers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setActivePrinterId(data.printer.id);
+    }
+  };
+
+  const handleRemovePrinter = async (e, printerId) => {
+    e.stopPropagation();
+    if (printers.length <= 1) return;
+    const printer = printers.find((p) => p.id === printerId);
+    if (!confirm(`Remove printer "${printer?.name}"? This will stop its server and clear its labels.`)) return;
+    await fetch(`/api/printers/${printerId}`, { method: 'DELETE' });
   };
 
   return (
@@ -60,16 +99,16 @@ export default function Layout({ children }) {
             <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-800">
               <Activity
                 size={14}
-                className={tcpStatus.running ? 'text-emerald-500' : 'text-gray-400'}
+                className={activeTcpStatus.running ? 'text-emerald-500' : 'text-gray-400'}
               />
               <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                {tcpStatus.running
-                  ? `${configs.host || '0.0.0.0'}:${configs.port || '9100'}`
+                {activeTcpStatus.running
+                  ? `${activePrinter.host || '0.0.0.0'}:${activePrinter.port || '9100'}`
                   : 'Offline'}
               </span>
               <span
                 className={`h-2 w-2 rounded-full ${
-                  tcpStatus.running ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'
+                  activeTcpStatus.running ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'
                 }`}
               />
             </div>
@@ -78,13 +117,13 @@ export default function Layout({ children }) {
             <button
               onClick={handleToggleTcp}
               className={`btn-icon ${
-                tcpStatus.running
+                activeTcpStatus.running
                   ? 'text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20'
                   : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
               }`}
-              title={tcpStatus.running ? 'Stop TCP Server' : 'Start TCP Server'}
+              title={activeTcpStatus.running ? 'Stop TCP Server' : 'Start TCP Server'}
             >
-              {tcpStatus.running ? <Power size={20} /> : <PowerOff size={20} />}
+              {activeTcpStatus.running ? <Power size={20} /> : <PowerOff size={20} />}
             </button>
 
             <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
@@ -157,15 +196,58 @@ export default function Layout({ children }) {
             </button>
           </div>
         </div>
+
+        {/* Printer Sub-Tabs */}
+        {activeTab === 'printer' && printers.length > 0 && (
+          <div className="flex items-center gap-1 border-t border-gray-100 px-4 py-1 dark:border-gray-800">
+            {printers.map((p) => {
+              const status = tcpStatuses[p.id] || {};
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setActivePrinterId(p.id)}
+                  className={`flex items-center gap-1.5 rounded-t-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                    p.id === activePrinterId
+                      ? 'bg-white border border-b-0 border-gray-200 text-brand-700 dark:bg-gray-900 dark:border-gray-700 dark:text-brand-400'
+                      : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      status.running ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
+                    }`}
+                  />
+                  {p.name}
+                  <span className="text-[10px] text-gray-400">:{p.port}</span>
+                  {printers.length > 1 && (
+                    <span
+                      onClick={(e) => handleRemovePrinter(e, p.id)}
+                      className="ml-0.5 rounded p-0.5 text-gray-400 hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-900/30"
+                    >
+                      <X size={10} />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            <button
+              onClick={handleAddPrinter}
+              className="ml-1 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-emerald-600 dark:hover:bg-gray-800"
+              title="Add Printer"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden">{children}</main>
 
       {/* Modals */}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
-      {showTest && <TestModal onClose={() => setShowTest(false)} />}
-      {showErrors && <ErrorsWarningsModal onClose={() => setShowErrors(false)} />}
+      {showSettings && <SettingsModal printerId={activePrinterId} onClose={() => setShowSettings(false)} />}
+      {showTest && <TestModal printerId={activePrinterId} onClose={() => setShowTest(false)} />}
+      {showErrors && <ErrorsWarningsModal printerId={activePrinterId} onClose={() => setShowErrors(false)} />}
     </div>
   );
 }
