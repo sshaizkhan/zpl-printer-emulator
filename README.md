@@ -1,9 +1,53 @@
 # ZPL Printer Emulator
 
 Printer emulator for ZPL (Zebra Programming Language) rendering engine. The emulator is based on the [labelary](http://labelary.com/service.html) web service.
-You can configure print density, label size and the tcp server to listen for any incoming labels.
+You can configure print density, label size and the TCP server to listen for any incoming labels.
 
 [Releases](https://github.com/erikn69/ZplEscPrinter/releases/latest)
+
+## Multi-Printer Support
+
+The **web application** mode supports multiple virtual printers, allowing you to emulate several ZPL printers simultaneously—each with its own TCP port, configuration, and label history.
+
+### Features
+
+- **Add/Remove printers** — Create multiple virtual printers; each can listen on a different port (e.g., 9100, 9101, 9102)
+- **Per-printer configuration** — Each printer has its own density, label size, unit, host, port, and error/warning flags
+- **Per-printer label history** — Labels are tracked separately for each printer (up to 50 labels per printer)
+- **Per-printer TCP servers** — Start or stop each printer’s TCP server independently
+- **Active printer selection** — Switch between printers in the UI to view labels and manage settings
+
+### Usage (Web App)
+
+1. Start the web app: `docker compose --profile web up -d` or run the web server locally
+2. Access the UI at `http://localhost:4000`
+3. Use the printer selector to add printers or switch between them
+4. Configure each printer’s host, port, and label settings
+5. Start the TCP server for each printer — each listens on its assigned port
+
+### API Endpoints (Multi-Printer)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/printers` | List all printers and get state |
+| POST | `/api/printers` | Add a new printer |
+| DELETE | `/api/printers/:printerId` | Remove a printer (requires at least one remaining) |
+| GET | `/api/printers/:printerId/config` | Get printer config |
+| POST | `/api/printers/:printerId/config` | Update printer config |
+| POST | `/api/printers/:printerId/tcp/start` | Start TCP server for printer |
+| POST | `/api/printers/:printerId/tcp/stop` | Stop TCP server for printer |
+| POST | `/api/printers/:printerId/print` | Send ZPL data to a specific printer |
+| GET | `/api/printers/:printerId/labels` | Get labels for a printer |
+| DELETE | `/api/printers/:printerId/labels` | Clear all labels for a printer |
+
+### Socket.IO Events (Real-time)
+
+- `printers-state` — Full state (printers, activePrinterId, tcpStatuses, labelHistories)
+- `printers-updated` — Printer list changed (add/remove)
+- `config-updated` — Printer config changed
+- `tcp-status` — TCP server started/stopped for a printer
+- `label` — New label rendered for a printer
+- `labels-cleared` — Labels cleared for a printer
 
 ## Supported ZPL Commands
 
