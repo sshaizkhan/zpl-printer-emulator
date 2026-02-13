@@ -174,3 +174,70 @@ input[type=checkbox]._big, input[type=radio]._big, ._big>input[type=checkbox], .
     font-size: 0.85rem;
     padding: 4px 12px;
 }
+
+/* ── Printer Sub-Tabs ────────────────────────────────────────────── */
+#printerSubTabs {
+    border-bottom: none;
+    gap: 2px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+}
+
+#printerSubTabs .nav-link.printer-sub-tab {
+    font-size: 0.78rem;
+    padding: 3px 10px;
+    border-radius: 4px 4px 0 0;
+    border: 1px solid #dee2e6;
+    border-bottom: none;
+    background: #f8f9fa;
+    color: #6c757d;
+    white-space: nowrap;
+}
+
+#printerSubTabs .nav-link.printer-sub-tab.active {
+    background: #fff;
+    color: #0d6efd;
+    font-weight: 600;
+    border-bottom: 1px solid #fff;
+    margin-bottom: -1px;
+}
+
+#printerSubTabs .nav-link.printer-sub-tab:hover:not(.active) {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.printer-status-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #adb5bd;
+}
+
+.printer-status-dot.running {
+    background: #198754;
+    box-shadow: 0 0 4px rgba(25, 135, 84, 0.5);
+}
+
+.printer-port-badge {
+    font-size: 0.65rem !important;
+    padding: 1px 4px !important;
+    font-weight: normal !important;
+}
+
+.printer-tab-close {
+    font-size: 0.5rem;
+    padding: 2px !important;
+    opacity: 0.4;
+}
+
+.printer-tab-close:hover {
+    opacity: 1;
+}
+
+#btn-add-printer {
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    line-height: 1.4;
+}

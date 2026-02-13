@@ -7,8 +7,7 @@ const SOCKET_URL =
 
 export default function useSocket() {
   const socketRef = useRef(null);
-  const { setConfigs, setTcpStatus, addLabel, addNotification, clearLabels } =
-    useConfigStore();
+  const store = useConfigStore;
 
   useEffect(() => {
     const socket = io(SOCKET_URL, {
@@ -20,24 +19,44 @@ export default function useSocket() {
       console.log('WebSocket connected');
     });
 
-    socket.on('config-updated', (configs) => {
-      setConfigs(configs);
+    // Full state sync on connect
+    socket.on('printers-state', (data) => {
+      store.getState().setPrintersState(data);
     });
 
-    socket.on('tcp-status', (status) => {
-      setTcpStatus(status);
+    // Printer list changed (add/remove)
+    socket.on('printers-updated', ({ printers }) => {
+      store.getState().setPrinters(printers);
     });
 
-    socket.on('label', (label) => {
-      addLabel(label);
+    // Config updated for a specific printer
+    socket.on('config-updated', ({ printerId, configs }) => {
+      store.getState().updatePrinterConfig(printerId, configs);
     });
 
-    socket.on('labels-cleared', () => {
-      clearLabels();
+    // TCP status change for a specific printer
+    socket.on('tcp-status', ({ printerId, ...status }) => {
+      store.getState().setTcpStatus(printerId, status);
     });
 
+    // New label for a specific printer
+    socket.on('label', ({ printerId, ...label }) => {
+      store.getState().addLabel(printerId, label);
+    });
+
+    // Single label removed
+    socket.on('label-removed', ({ printerId, labelId }) => {
+      store.getState().removeLabel(printerId, labelId);
+    });
+
+    // Labels cleared for a specific printer
+    socket.on('labels-cleared', ({ printerId }) => {
+      store.getState().clearLabels(printerId);
+    });
+
+    // Notifications (may or may not have printerId)
     socket.on('notification', (notification) => {
-      addNotification(notification);
+      store.getState().addNotification(notification);
     });
 
     socket.on('disconnect', () => {

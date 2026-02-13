@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Modal from './Modal';
 import { FlaskConical, Printer, FileText, Sparkles } from 'lucide-react';
 
-export default function TestModal({ onClose }) {
+export default function TestModal({ printerId, onClose }) {
   const [zplData, setZplData] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -10,7 +10,7 @@ export default function TestModal({ onClose }) {
     if (!zplData.trim()) return;
     setLoading(true);
     try {
-      await fetch('/api/print', {
+      await fetch(`/api/printers/${printerId}/print`, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: zplData,

@@ -3,19 +3,21 @@ import useConfigStore from '../store/configStore';
 import Modal from './Modal';
 import { Settings, Save } from 'lucide-react';
 
-export default function SettingsModal({ onClose }) {
-  const { configs } = useConfigStore();
-  const [form, setForm] = useState({ ...configs });
+export default function SettingsModal({ printerId, onClose }) {
+  const { printers } = useConfigStore();
+  const printer = printers.find((p) => p.id === printerId) || {};
+  const [form, setForm] = useState({ ...printer });
 
   useEffect(() => {
-    setForm({ ...configs });
-  }, [configs]);
+    const p = printers.find((p) => p.id === printerId) || {};
+    setForm({ ...p });
+  }, [printers, printerId]);
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
   const toggle = (key) => setForm((f) => ({ ...f, [key]: !f[key] }));
 
   const handleSave = async () => {
-    await fetch('/api/config', {
+    await fetch(`/api/printers/${printerId}/config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
@@ -24,8 +26,22 @@ export default function SettingsModal({ onClose }) {
   };
 
   return (
-    <Modal title="Printer Settings" icon={Settings} onClose={onClose} size="lg">
+    <Modal title={`Settings: ${printer.name || 'Printer'}`} icon={Settings} onClose={onClose} size="lg">
       <div className="max-h-[70vh] overflow-y-auto px-6 py-4">
+        {/* Printer Identity */}
+        <Section title="Printer Identity">
+          <div>
+            <label className="label-text">Printer Name</label>
+            <input
+              type="text"
+              className="input-field"
+              value={form.name || ''}
+              onChange={(e) => update('name', e.target.value)}
+              placeholder="Printer 1"
+            />
+          </div>
+        </Section>
+
         {/* Printer Properties */}
         <Section title="Printer Properties">
           <div className="grid grid-cols-3 gap-3">
