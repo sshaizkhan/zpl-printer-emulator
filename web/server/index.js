@@ -343,7 +343,7 @@ async function renderEplLabelsForPrinter(printerId, data) {
     return;
   }
 
-  const dpmm = parseInt(printer.density) || 8;
+  const dpmm = 8; // EPL coords are in mm; 8dpmm (203dpi) is sufficient for emulation
   let buffer;
   try {
     buffer = await renderEplLabel(spec, dpmm);

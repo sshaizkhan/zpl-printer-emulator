@@ -36,7 +36,7 @@ export default function SettingsModal({ printerId, onClose }) {
           </div>
         </Section>
 
-        <Section title="Printer Properties">
+        {form.language !== 'epl' && <Section title="Printer Properties">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
             <div>
               <label className="label-text">Print Density</label>
@@ -67,7 +67,7 @@ export default function SettingsModal({ printerId, onClose }) {
               <input type="number" className="input-field" value={form.height || '6'} step="0.01" min="1" onChange={(e) => update('height', e.target.value)} />
             </div>
           </div>
-        </Section>
+        </Section>}
 
         <Section title="Network">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
