@@ -42,6 +42,37 @@ export default function SettingsModal({ printerId, onClose }) {
           </div>
         </Section>
 
+        {/* Language */}
+        <Section title="Language">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Printer Language</span>
+            <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => update('language', 'zpl')}
+                className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+                  form.language !== 'epl'
+                    ? 'bg-brand-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                }`}
+              >
+                ZPL
+              </button>
+              <button
+                type="button"
+                onClick={() => update('language', 'epl')}
+                className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+                  form.language === 'epl'
+                    ? 'bg-brand-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                }`}
+              >
+                EPL
+              </button>
+            </div>
+          </div>
+        </Section>
+
         {/* Printer Properties */}
         <Section title="Printer Properties">
           <div className="grid grid-cols-3 gap-3">
@@ -179,29 +210,31 @@ export default function SettingsModal({ printerId, onClose }) {
           </div>
         </Section>
 
-        {/* ZPL Status (~HS) */}
-        <Section title="ZPL Status (~HS)">
-          <div className="grid grid-cols-3 gap-x-4 gap-y-2">
-            {[
-              ['zplHeadOpen', 'Head Open'],
-              ['zplPaperOut', 'Paper Out'],
-              ['zplRibbonOut', 'Ribbon Out'],
-              ['zplPaperJam', 'Paper Jam'],
-              ['zplPrinterPaused', 'Printer Paused'],
-              ['zplCutterFault', 'Cutter Fault'],
-              ['zplHeadTooHot', 'Head Too Hot'],
-              ['zplMotorOverheat', 'Motor Overheat'],
-              ['zplRewindFault', 'Rewind Fault'],
-            ].map(([key, label]) => (
-              <Checkbox
-                key={key}
-                label={label}
-                checked={form[key]}
-                onChange={() => toggle(key)}
-              />
-            ))}
-          </div>
-        </Section>
+        {/* ZPL Status (~HS) — only relevant for ZPL printers */}
+        {form.language !== 'epl' && (
+          <Section title="ZPL Status (~HS)">
+            <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+              {[
+                ['zplHeadOpen', 'Head Open'],
+                ['zplPaperOut', 'Paper Out'],
+                ['zplRibbonOut', 'Ribbon Out'],
+                ['zplPaperJam', 'Paper Jam'],
+                ['zplPrinterPaused', 'Printer Paused'],
+                ['zplCutterFault', 'Cutter Fault'],
+                ['zplHeadTooHot', 'Head Too Hot'],
+                ['zplMotorOverheat', 'Motor Overheat'],
+                ['zplRewindFault', 'Rewind Fault'],
+              ].map(([key, label]) => (
+                <Checkbox
+                  key={key}
+                  label={label}
+                  checked={form[key]}
+                  onChange={() => toggle(key)}
+                />
+              ))}
+            </div>
+          </Section>
+        )}
       </div>
 
       <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4 dark:border-gray-700">
