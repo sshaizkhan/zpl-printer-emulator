@@ -37,6 +37,8 @@ function parseEpl(data) {
 
   let curX = 0;
   let curY = 0;
+  let curMagX = 1;
+  let curMagY = 1;
 
   for (const token of tokens) {
     const cmd = token.cmd.toUpperCase();
@@ -67,38 +69,50 @@ function parseEpl(data) {
         break;
       }
 
-      case 'M':
+      case 'M': {
+        // #M<magX>/<magY> — magnification applied to next element
+        const mparts = params.split('/');
+        curMagX = parseFloat(mparts[0]) || 1;
+        curMagY = parseFloat(mparts[1]) || curMagX;
         break;
+      }
 
       case 'YT':
       case 'YN': {
+        // EPL format: #YT<font>/<rotation>/<mag>///<text>#G
         const parsed = parseContentCommand(params);
         if (parsed) {
           spec.elements.push({
             type: 'text',
             x: curX,
             y: curY,
-            rotation: parsed.rot,
-            font: parsed.p1,
+            font: String(parsed.rot),
+            rotation: parseInt(parsed.p1) || 0,
             mag: parsed.p2,
+            magX: curMagX,
+            magY: curMagY,
             content: parsed.content,
           });
+          curMagX = 1; curMagY = 1; // reset after use
         }
         break;
       }
 
       case 'YB': {
+        // EPL format: #YB<type>/<mode>/<widthFactor>/<heightFactor>///<data>#G
+        // parts[0]=barcode type (1=code128, 2=ean13…), barcode renders horizontal
         const parsed = parseContentCommand(params);
         if (parsed) {
           spec.elements.push({
             type: 'barcode',
             x: curX,
             y: curY,
-            rotation: parsed.rot,
-            barcodeType: parsed.p1,
-            mag: parsed.p2,
+            rotation: 0,
+            barcodeType: String(parsed.rot),
+            widthFactor: parsed.p2,
             data: parsed.content,
           });
+          curMagX = 1; curMagY = 1;
         }
         break;
       }
@@ -193,7 +207,8 @@ async function renderEplLabel(spec, dpmm = 8) {
 
   for (const el of spec.elements) {
     const x = Math.round((el.x * dpi) / 25.4);
-    const y = Math.round((el.y * dpi) / 25.4);
+    // EPL #J is measured from the bottom edge of the label; flip to canvas coords
+    const y = Math.round(((spec.height - el.y) * dpi) / 25.4);
 
     if (el.type === 'text') {
       _renderText(ctx, el, x, y, dpi);
@@ -211,30 +226,41 @@ async function renderEplLabel(spec, dpmm = 8) {
   return canvas.toBuffer('image/png');
 }
 
+// EPL printer-internal font heights in dots at 203dpi (8dpmm)
+const EPL_FONT_BASE_PX = {
+  '100': 6, '101': 8, '102': 10, '103': 12,
+  '104': 14, '105': 16, '106': 18, '107': 22,
+};
+
 function _renderText(ctx, el, x, y, dpi) {
-  const mag = parseFloat(el.mag) || 1;
-  const fontSize = Math.round(mag * 10 * (dpi / 72));
+  const basePx = EPL_FONT_BASE_PX[String(el.font)] || 16;
+  const magY = el.magY || 1;
+  const fontSize = Math.round(basePx * magY * (dpi / 203));
   const rot = (el.rotation || 0) * 90;
 
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate((rot * Math.PI) / 180);
-  ctx.font = `${fontSize}px monospace`;
+  ctx.font = `bold ${fontSize}px monospace`;
   ctx.fillStyle = '#000000';
-  ctx.fillText(el.content || '', 0, fontSize);
+  ctx.textBaseline = 'top';
+  ctx.fillText(el.content || '', 0, 0);
   ctx.restore();
 }
 
 async function _renderBarcode(ctx, el, x, y, bwipjs, loadImage) {
-  const bcid = eplBarcodeToBwip(el.barcodeType);
-  const scale = Math.max(1, Math.round(parseFloat(el.mag) || 1));
+  // Strip letter suffixes from EPL barcode type (e.g. "0M" → "0")
+  const typeKey = String(el.barcodeType).replace(/[^0-9]/g, '') || '0';
+  const bcid = eplBarcodeToBwip(typeKey);
+  // EPL widthFactor is narrow-bar width in dots; map to bwip-js scale (1-4)
+  const scale = Math.max(1, Math.min(4, Math.round((parseFloat(el.widthFactor) || 3) / 3)));
 
   try {
     const png = await bwipjs.toBuffer({
       bcid,
       text: el.data || '',
       scale,
-      height: 10,
+      height: 8,
       includetext: true,
     });
 
