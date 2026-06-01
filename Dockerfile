@@ -31,6 +31,11 @@ LABEL description="ZPL Printer Emulator - Web Application"
 
 WORKDIR /app
 
+# Native deps for node-canvas
+RUN apk add --no-cache \
+    cairo-dev pango-dev jpeg-dev giflib-dev librsvg-dev \
+    python3 make g++
+
 # Install server dependencies
 COPY web/server/package.json web/server/package-lock.json* ./server/
 RUN cd server && npm install --production
