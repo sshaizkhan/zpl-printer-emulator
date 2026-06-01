@@ -358,7 +358,7 @@ async function renderEplLabelsForPrinter(printerId, data) {
     const label = {
       id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
       image: `data:image/png;base64,${base64}`,
-      zpl: data,
+      zpl: data, // raw printer data (EPL in this path; field named 'zpl' for schema compatibility)
       timestamp: new Date().toISOString(),
       width: spec.width / 25.4,
       height: spec.height / 25.4,
@@ -486,7 +486,7 @@ function startTcpServer(printerId) {
           buffer = Buffer.alloc(0);
         }
       } catch (err) {
-        console.error('ZPL processing error:', err);
+        console.error('Processing error:', err);
         emitNotification(`Error: ${err.message}`, 'error', printerId);
         if (!keepConnection) {
           sock.end();
