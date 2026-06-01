@@ -7,7 +7,7 @@ function tokenize(data) {
 
   for (const part of parts) {
     if (!part.trim()) continue;
-    const match = part.match(/^([A-Za-z!?]{1,5})([\s\S]*)$/);
+    const match = part.match(/^([!?][A-Za-z0-9!?]{0,4}|[A-Za-z]{1,5})([\s\S]*)$/);
     if (!match) continue;
     tokens.push({ cmd: match[1].trim(), params: match[2].trim() });
   }
@@ -104,6 +104,7 @@ function parseEpl(data) {
       }
 
       case 'YL': {
+        // Geometric commands use plain /‑separated params, no /// content separator
         const parts = params.replace(/#?G$/, '').split('/');
         spec.elements.push({
           type: 'line',
@@ -117,6 +118,7 @@ function parseEpl(data) {
       }
 
       case 'YR': {
+        // Geometric commands use plain /‑separated params, no /// content separator
         const parts = params.replace(/#?G$/, '').split('/');
         spec.elements.push({
           type: 'rect',
@@ -130,6 +132,7 @@ function parseEpl(data) {
       }
 
       case 'YE': {
+        // Geometric commands use plain /‑separated params, no /// content separator
         const parts = params.replace(/#?G$/, '').split('/');
         spec.elements.push({
           type: 'ellipse',
