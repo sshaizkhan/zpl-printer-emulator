@@ -115,9 +115,19 @@ describe('parseEpl', () => {
   });
 });
 
-const { renderEplLabel } = require('../epl-commands');
+let renderEplLabel;
+let canvasAvailable = false;
+try {
+  renderEplLabel = require('../epl-commands').renderEplLabel;
+  require('canvas'); // probe native binary
+  canvasAvailable = true;
+} catch (_) {
+  renderEplLabel = async () => { throw new Error('canvas not available'); };
+}
 
-describe('renderEplLabel', () => {
+const describeRenderer = canvasAvailable ? describe : describe.skip;
+
+describeRenderer('renderEplLabel', () => {
   test('returns a Buffer', async () => {
     const spec = { width: 50, height: 30, quantity: 1, elements: [] };
     const result = await renderEplLabel(spec, 8);
