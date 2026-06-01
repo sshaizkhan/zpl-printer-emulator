@@ -408,44 +408,46 @@ async function processEplForPrinter(printerId, data) {
   const textData = data.toString('utf8').trim();
   if (!textData) return null;
 
-  // #!Xn — Status query. Driver expects LF-terminated response.
-  // Format: SaaaaAbcdMqqqqqqFeeeeeeKxxxxxxxx\n  (spec page 18-19)
-  if (/^#!X\d/.test(textData)) {
-    const response = _buildEplStatusResponse(printer);
-    emitNotification(`EPL status queried → ${response}`, 'info', printerId);
-    return Buffer.from(response + '\n', 'utf8');
+  // Immediate commands are single-line (e.g. "#!X0", "#!CA").
+  // A full EPL job contains newlines — route directly to renderer.
+  const isSingleCommand = !textData.includes('\n');
+
+  if (isSingleCommand) {
+    // #!Xn — Status query. Driver expects LF-terminated response.
+    if (/^#!X\d/.test(textData)) {
+      const response = _buildEplStatusResponse(printer);
+      emitNotification(`EPL status queried → ${response}`, 'info', printerId);
+      return Buffer.from(response + '\n', 'utf8');
+    }
+    // #!CA / #!CF — Clear All / Clear Format
+    if (textData === '#!CA' || textData === '#!CF') {
+      emitNotification('EPL Clear All', 'info', printerId);
+      return null;
+    }
+    // #!SR — Start/Resume
+    if (textData === '#!SR') {
+      emitNotification('EPL Resume printing', 'info', printerId);
+      return null;
+    }
+    // #!SP — Stop
+    if (textData === '#!SP') {
+      emitNotification('EPL Stop printing', 'info', printerId);
+      return null;
+    }
+    // #!Pn — Interface deactivation
+    if (/^#!P\d/.test(textData)) {
+      emitNotification('EPL interface deactivated', 'info', printerId);
+      return null;
+    }
+    // #!An — Interface activation (bare, without job data)
+    if (/^#!A\d/.test(textData)) {
+      emitNotification('EPL interface activated', 'info', printerId);
+      return null;
+    }
   }
 
-  // #!CA — Clear All (reset spooler, no response)
-  if (textData === '#!CA' || textData === '#!CF') {
-    emitNotification('EPL Clear All', 'info', printerId);
-    return null;
-  }
-
-  // #!SR — Start/Resume printing
-  if (textData === '#!SR') {
-    emitNotification('EPL Resume printing', 'info', printerId);
-    return null;
-  }
-
-  // #!SP — Stop printing
-  if (textData === '#!SP') {
-    emitNotification('EPL Stop printing', 'info', printerId);
-    return null;
-  }
-
-  // #!Pn — Interface deactivation (no response)
-  if (/^#!P\d/.test(textData)) {
-    emitNotification('EPL interface deactivated', 'info', printerId);
-    return null;
-  }
-
-  // #!An — Interface activation
-  if (/^#!A\d/.test(textData)) {
-    emitNotification('EPL interface activated', 'info', printerId);
-    return null;
-  }
-
+  // Multi-line or unrecognised single-line → render as EPL label job
+  // (parseEpl handles #!A1 at the start of a job transparently)
   await renderEplLabelsForPrinter(printerId, textData);
   return null;
 }
