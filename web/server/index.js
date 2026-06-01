@@ -6,6 +6,7 @@ const fs = require('fs');
 const { Server: SocketIO } = require('socket.io');
 const cors = require('cors');
 const ZplCommands = require('./zpl-commands');
+const { parseEpl, renderEplLabel } = require('./epl-commands');
 
 const app = express();
 app.use(cors());
@@ -20,6 +21,7 @@ const io = new SocketIO(httpServer, {
 // ── State ────────────────────────────────────────────────────────────
 const defaults = {
   isOn: false,
+  language: 'zpl',
   density: '8',
   width: '4',
   height: '6',
@@ -328,6 +330,87 @@ async function renderLabelsForPrinter(printerId, data) {
   }
 }
 
+async function renderEplLabelsForPrinter(printerId, data) {
+  const printer = getPrinter(printerId);
+  if (!printer) return;
+
+  let spec;
+  try {
+    spec = parseEpl(data);
+  } catch (e) {
+    console.error('EPL parse error:', e.message);
+    emitNotification(`EPL parse error: ${e.message}`, 'error', printerId);
+    return;
+  }
+
+  const dpmm = parseInt(printer.density) || 8;
+  let buffer;
+  try {
+    buffer = await renderEplLabel(spec, dpmm);
+  } catch (e) {
+    console.error('EPL render error:', e.message);
+    emitNotification(`EPL render error: ${e.message}`, 'error', printerId);
+    return;
+  }
+
+  for (let i = 0; i < Math.max(1, spec.quantity); i++) {
+    const base64 = buffer.toString('base64');
+    const label = {
+      id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+      image: `data:image/png;base64,${base64}`,
+      zpl: data,
+      timestamp: new Date().toISOString(),
+      width: spec.width / 25.4,
+      height: spec.height / 25.4,
+      printerId,
+    };
+
+    if (!labelHistories[printerId]) labelHistories[printerId] = [];
+    labelHistories[printerId].unshift(label);
+    if (labelHistories[printerId].length > MAX_LABELS) {
+      labelHistories[printerId] = labelHistories[printerId].slice(0, MAX_LABELS);
+    }
+
+    io.emit('label', label);
+    emitNotification('EPL label rendered successfully', 'success', printerId);
+
+    if (printer.saveLabels) {
+      const counter = getCounter(printerId);
+      const savePath = printer.path || '/tmp/labels';
+      try {
+        if (!fs.existsSync(savePath)) fs.mkdirSync(savePath, { recursive: true });
+        if (printer.filetype === '1') {
+          const fileName = `LBL${padLeft(counter, 6)}.png`;
+          fs.writeFileSync(path.join(savePath, fileName), buffer);
+          emitNotification(`Label ${fileName} saved`, 'success', printerId);
+        } else if (printer.filetype === '3') {
+          const fileName = `LBL${padLeft(counter, 6)}.raw`;
+          fs.writeFileSync(path.join(savePath, fileName), data);
+          emitNotification(`Label ${fileName} saved`, 'success', printerId);
+        }
+      } catch (e) {
+        emitNotification(`Save error: ${e.message}`, 'error', printerId);
+      }
+    }
+  }
+}
+
+async function processEplForPrinter(printerId, data) {
+  const printer = getPrinter(printerId);
+  if (!printer) return null;
+
+  const textData = data.toString('utf8').trim();
+  if (!textData) return null;
+
+  if (textData === '#!A1') {
+    emitNotification('EPL interface activated', 'info', printerId);
+    return null;
+  }
+
+  await renderEplLabelsForPrinter(printerId, textData);
+  return null;
+}
+
 // ── TCP Server (per-printer) ────────────────────────────────────────
 function startTcpServer(printerId) {
   const printer = getPrinter(printerId);
@@ -391,7 +474,10 @@ function startTcpServer(printerId) {
       }
 
       try {
-        const response = await processZplForPrinter(printerId, data);
+        const currentPrinter = getPrinter(printerId);
+        const response = currentPrinter && currentPrinter.language === 'epl'
+          ? await processEplForPrinter(printerId, data)
+          : await processZplForPrinter(printerId, data);
         if (response) sock.write(response);
 
         if (!keepConnection) {
