@@ -450,7 +450,11 @@ async function processEplForPrinter(printerId, data) {
   }
 
   // Multi-line or unrecognised single-line → render as EPL label job
-  console.log(`[EPL][${printerId}] Print job received (${textData.length} bytes):\n${textData}`);
+  if (process.env.EPL_DEBUG === '1') {
+    console.log(`[EPL][${printerId}] Print job received (${textData.length} bytes):\n${textData}`);
+  } else {
+    console.log(`[EPL][${printerId}] Print job received (${textData.length} bytes)`);
+  }
   await renderEplLabelsForPrinter(printerId, textData);
   return null;
 }
