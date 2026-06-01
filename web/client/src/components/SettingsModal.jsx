@@ -36,17 +36,7 @@ export default function SettingsModal({ printerId, onClose }) {
           </div>
         </Section>
 
-        <Section title="Language">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-2)' }}>Printer Language</span>
-            <div className="lang-toggle-lg" style={{ width: '160px' }}>
-              <button type="button" onClick={() => update('language', 'zpl')} className={form.language !== 'epl' ? 'active' : ''}>ZPL</button>
-              <button type="button" onClick={() => update('language', 'epl')} className={form.language === 'epl' ? 'active' : ''}>EPL</button>
-            </div>
-          </div>
-        </Section>
-
-        <Section title="Printer Properties">
+<Section title="Printer Properties">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
             <div>
               <label className="label-text">Print Density</label>

@@ -558,7 +558,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.9375rem 1.25rem;
+  padding: 1.0625rem 1.375rem;
   border-bottom: 1px solid var(--border);
 }
 
@@ -582,9 +582,10 @@
 
 .modal-title {
   font-family: 'Syne', sans-serif;
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 700;
   color: var(--text);
+  letter-spacing: -0.01em;
 }
 
 .modal-close {
@@ -622,12 +623,12 @@
 
 .settings-section-title {
   font-family: 'Syne', sans-serif;
-  font-size: 0.75rem;
+  font-size: 0.9375rem;
   font-weight: 700;
   color: var(--text);
-  letter-spacing: 0.01em;
+  letter-spacing: -0.005em;
   margin-bottom: 0.625rem;
-  padding-bottom: 0.3125rem;
+  padding-bottom: 0.375rem;
   border-bottom: 1px solid var(--border);
 }
 
@@ -640,10 +641,10 @@
 
 .label-text {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-2);
-  margin-bottom: 0.3125rem;
+  margin-bottom: 0.375rem;
 }
 
 /* ═══════════════════════════════════════════
