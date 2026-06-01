@@ -36,7 +36,7 @@ export default function SettingsModal({ printerId, onClose }) {
           </div>
         </Section>
 
-<Section title="Printer Properties">
+        <Section title="Printer Properties">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
             <div>
               <label className="label-text">Print Density</label>
