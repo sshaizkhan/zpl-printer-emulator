@@ -100,9 +100,10 @@ function parseEpl(data) {
 
       case 'YB': {
         // EPL format: #YB<type>/<mode>/<widthFactor>/<heightFactor>///<data>#G
-        // parts[0]=barcode type (1=code128, 2=ean13…), barcode renders horizontal
         const parsed = parseContentCommand(params);
         if (parsed) {
+          // header has up to 4 parts; p2=widthFactor, parts[3]=heightFactor
+          const headerParts = params.substring(0, params.indexOf('///')).split('/');
           spec.elements.push({
             type: 'barcode',
             x: curX,
@@ -110,6 +111,7 @@ function parseEpl(data) {
             rotation: 0,
             barcodeType: String(parsed.rot),
             widthFactor: parsed.p2,
+            heightFactor: headerParts[3] || '4',
             data: parsed.content,
           });
           curMagX = 1; curMagY = 1;
@@ -213,7 +215,7 @@ async function renderEplLabel(spec, dpmm = 8) {
     if (el.type === 'text') {
       _renderText(ctx, el, x, y, dpi);
     } else if (el.type === 'barcode') {
-      await _renderBarcode(ctx, el, x, y, bwipjs, loadImage);
+      await _renderBarcode(ctx, el, x, y, bwipjs, loadImage, dpi);
     } else if (el.type === 'line') {
       _renderLine(ctx, el, dpi);
     } else if (el.type === 'rect') {
@@ -226,10 +228,10 @@ async function renderEplLabel(spec, dpmm = 8) {
   return canvas.toBuffer('image/png');
 }
 
-// EPL printer-internal font heights in dots at 203dpi (8dpmm)
+// EPL font heights in canvas pixels at 8dpmm (203dpi) — calibrated to real label proportions
 const EPL_FONT_BASE_PX = {
-  '100': 6, '101': 8, '102': 10, '103': 12,
-  '104': 14, '105': 16, '106': 18, '107': 22,
+  '100': 12, '101': 16, '102': 20, '103': 22,
+  '104': 26, '105': 30, '106': 35, '107': 50,
 };
 
 function _renderText(ctx, el, x, y, dpi) {
@@ -243,33 +245,40 @@ function _renderText(ctx, el, x, y, dpi) {
   ctx.rotate((rot * Math.PI) / 180);
   ctx.font = `bold ${fontSize}px monospace`;
   ctx.fillStyle = '#000000';
-  ctx.textBaseline = 'top';
+  ctx.textBaseline = 'alphabetic'; // #J is the text baseline, not top
   ctx.fillText(el.content || '', 0, 0);
   ctx.restore();
 }
 
-async function _renderBarcode(ctx, el, x, y, bwipjs, loadImage) {
-  // Strip letter suffixes from EPL barcode type (e.g. "0M" → "0")
+async function _renderBarcode(ctx, el, x, y, bwipjs, loadImage, dpi) {
   const typeKey = String(el.barcodeType).replace(/[^0-9]/g, '') || '0';
   const bcid = eplBarcodeToBwip(typeKey);
-  // EPL widthFactor is narrow-bar width in dots; map to bwip-js scale (1-4)
-  const scale = Math.max(1, Math.min(4, Math.round((parseFloat(el.widthFactor) || 3) / 3)));
+
+  // Target barcode height on canvas: heightFactor × 4mm in pixels
+  const heightMm = (parseFloat(el.heightFactor) || 4) * 4;
+  const targetH = Math.round(heightMm * dpi / 25.4);
 
   try {
     const png = await bwipjs.toBuffer({
       bcid,
       text: el.data || '',
-      scale,
-      height: 8,
+      scale: 2,
+      height: 20,  // generous height; we scale to targetH when drawing
       includetext: true,
+      textxalign: 'center',
     });
 
     const img = await loadImage(png);
+    // Scale barcode to target height, proportional width
+    const ratio = targetH / img.height;
+    const targetW = Math.round(img.width * ratio);
+
     const rot = (el.rotation || 0) * 90;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate((rot * Math.PI) / 180);
-    ctx.drawImage(img, 0, 0);
+    // Draw with bottom of barcode at the J position (same anchor as text baseline)
+    ctx.drawImage(img, 0, -targetH, targetW, targetH);
     ctx.restore();
   } catch (e) {
     console.warn(`[EPL] Barcode render failed (bcid=${bcid}, data="${el.data}"): ${e.message}`);
