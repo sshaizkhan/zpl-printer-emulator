@@ -6,6 +6,7 @@ import { AlertTriangle, Save } from 'lucide-react';
 export default function ErrorsWarningsModal({ printerId, onClose }) {
   const { printers } = useConfigStore();
   const printer = printers.find((p) => p.id === printerId) || {};
+  const isEpl = printer.language === 'epl';
   const [form, setForm] = useState({ ...printer });
 
   useEffect(() => {
@@ -16,7 +17,9 @@ export default function ErrorsWarningsModal({ printerId, onClose }) {
   const toggle = (key) => setForm((f) => ({ ...f, [key]: !f[key] }));
   const isTruthy = (val) => [1, '1', true, 'true'].includes(val);
 
+  // ZPL HQES preview
   const hqesPreview = useMemo(() => {
+    if (isEpl) return null;
     let errorFlags = 0;
     if (isTruthy(form.hqesMediaOut)) errorFlags |= 0x01;
     if (isTruthy(form.hqesRibbonOut)) errorFlags |= 0x02;
@@ -32,7 +35,19 @@ export default function ErrorsWarningsModal({ printerId, onClose }) {
     if (isTruthy(form.hqesReplacePrinthead)) warningFlags |= 0x04;
     if (isTruthy(form.hqesCleanPrinthead)) warningFlags |= 0x02;
     return `PRINTER STATUS\nERRORS: 1 00000000 ${errorFlags.toString(16).padStart(8,'0')}\nWARNINGS: 1 00000000 ${warningFlags.toString(16).padStart(8,'0')}`;
-  }, [form]);
+  }, [form, isEpl]);
+
+  // EPL #!Xn response preview
+  const eplStatusPreview = useMemo(() => {
+    if (!isEpl) return null;
+    let statusNum = '0000';
+    if (isTruthy(form.eplMediaOut))          statusNum = '0016';
+    else if (isTruthy(form.eplHeadOpen))     statusNum = '0031';
+    else if (isTruthy(form.eplRibbonOut))    statusNum = '0032';
+    else if (isTruthy(form.eplCutterFault))  statusNum = '0070';
+    else if (isTruthy(form.eplPrintheadOverTemp)) statusNum = '0050';
+    return `S${statusNum}A100M000000F065536K7.10`;
+  }, [form, isEpl]);
 
   const handleSave = async () => {
     await fetch(`/api/printers/${printerId}/config`, {
@@ -44,63 +59,118 @@ export default function ErrorsWarningsModal({ printerId, onClose }) {
   };
 
   return (
-    <Modal title="Errors & Warnings (~HQES)" icon={AlertTriangle} onClose={onClose} size="lg">
+    <Modal
+      title={isEpl ? 'EPL Errors (#!Xn)' : 'Errors & Warnings (~HQES)'}
+      icon={AlertTriangle}
+      onClose={onClose}
+      size="lg"
+    >
       <div style={{ maxHeight: '68vh', overflowY: 'auto', padding: '1.125rem 1.25rem' }}>
-        <p style={{ fontSize: '0.8125rem', color: 'var(--text-2)', marginBottom: '1rem', lineHeight: 1.5 }}>
-          Configure which errors and warnings the emulator reports when a{' '}
-          <code style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '4px', padding: '0.1rem 0.375rem' }}>~HQES</code>{' '}
-          command is received.
-        </p>
 
-        {/* Errors */}
-        <div className="settings-section">
-          <h3 className="settings-section-title" style={{ color: '#EF4444' }}>Errors</h3>
-          <div className="settings-panel" style={{ borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.03)' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
-              {[
-                ['hqesMediaOut', 'Media Out'],
-                ['hqesRibbonOut', 'Ribbon Out'],
-                ['hqesHeadOpen', 'Head Open'],
-                ['hqesCutterFault', 'Cutter Fault'],
-                ['hqesPrintheadOverTemp', 'Printhead Over-Temp'],
-                ['hqesMotorOverTemp', 'Motor Over-Temp'],
-                ['hqesBadPrintheadElement', 'Bad Printhead Element'],
-                ['hqesPrintheadDetectionError', 'Printhead Detection Error'],
-              ].map(([key, label]) => (
-                <label key={key} className="check-item">
-                  <input type="checkbox" style={{ accentColor: '#EF4444' }} checked={isTruthy(form[key])} onChange={() => toggle(key)} />
-                  <span>{label}</span>
-                </label>
-              ))}
+        {/* ── EPL mode ─────────────────────────────────────── */}
+        {isEpl && (
+          <>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-2)', marginBottom: '1rem', lineHeight: 1.5 }}>
+              Configure the error flags the emulator reports in the{' '}
+              <code style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '4px', padding: '0.1rem 0.375rem' }}>#!Xn</code>{' '}
+              status response. The C++ driver checks <code style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '4px', padding: '0.1rem 0.375rem' }}>S&nbsp;!= "0000"</code>{' '}
+              to detect any printer error. Multiple errors: highest priority wins.
+            </p>
+
+            <div className="settings-section">
+              <h3 className="settings-section-title" style={{ color: '#EF4444' }}>
+                Errors (S field)
+              </h3>
+              <div className="settings-panel" style={{ borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.03)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
+                  {[
+                    ['eplMediaOut',          'Media Out',           'S=0016'],
+                    ['eplHeadOpen',           'Head Open',           'S=0031'],
+                    ['eplRibbonOut',          'Ribbon Out',          'S=0032'],
+                    ['eplCutterFault',        'Cutter Fault',        'S=0070'],
+                    ['eplPrintheadOverTemp',  'Printhead Over-Temp', 'S=0050'],
+                  ].map(([key, label, code]) => (
+                    <label key={key} className="check-item" style={{ justifyContent: 'space-between' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input type="checkbox" style={{ accentColor: '#EF4444' }} checked={isTruthy(form[key])} onChange={() => toggle(key)} />
+                        <span>{label}</span>
+                      </span>
+                      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+                        {code}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Warnings */}
-        <div className="settings-section">
-          <h3 className="settings-section-title" style={{ color: '#F59E0B' }}>Warnings</h3>
-          <div className="settings-panel" style={{ borderColor: 'rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.03)' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
-              {[
-                ['hqesMediaNearEnd', 'Media Near End'],
-                ['hqesRibbonNearEnd', 'Need to Calibrate Media'],
-                ['hqesReplacePrinthead', 'Replace Printhead'],
-                ['hqesCleanPrinthead', 'Clean Printhead'],
-              ].map(([key, label]) => (
-                <label key={key} className="check-item">
-                  <input type="checkbox" style={{ accentColor: '#F59E0B' }} checked={isTruthy(form[key])} onChange={() => toggle(key)} />
-                  <span>{label}</span>
-                </label>
-              ))}
+            <div className="settings-section">
+              <h3 className="settings-section-title">#!Xn Response Preview</h3>
+              <pre className="code-block">{eplStatusPreview}</pre>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                S=0000 → driver OK · S≠0000 → driver blocks print job
+              </p>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
-        {/* Preview */}
-        <div className="settings-section">
-          <h3 className="settings-section-title">Response Preview</h3>
-          <pre className="code-block">{hqesPreview}</pre>
-        </div>
+        {/* ── ZPL mode ─────────────────────────────────────── */}
+        {!isEpl && (
+          <>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-2)', marginBottom: '1rem', lineHeight: 1.5 }}>
+              Configure which errors and warnings the emulator reports when a{' '}
+              <code style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '4px', padding: '0.1rem 0.375rem' }}>~HQES</code>{' '}
+              command is received.
+            </p>
+
+            <div className="settings-section">
+              <h3 className="settings-section-title" style={{ color: '#EF4444' }}>Errors</h3>
+              <div className="settings-panel" style={{ borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.03)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
+                  {[
+                    ['hqesMediaOut', 'Media Out'],
+                    ['hqesRibbonOut', 'Ribbon Out'],
+                    ['hqesHeadOpen', 'Head Open'],
+                    ['hqesCutterFault', 'Cutter Fault'],
+                    ['hqesPrintheadOverTemp', 'Printhead Over-Temp'],
+                    ['hqesMotorOverTemp', 'Motor Over-Temp'],
+                    ['hqesBadPrintheadElement', 'Bad Printhead Element'],
+                    ['hqesPrintheadDetectionError', 'Printhead Detection Error'],
+                  ].map(([key, label]) => (
+                    <label key={key} className="check-item">
+                      <input type="checkbox" style={{ accentColor: '#EF4444' }} checked={isTruthy(form[key])} onChange={() => toggle(key)} />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="settings-section">
+              <h3 className="settings-section-title" style={{ color: '#F59E0B' }}>Warnings</h3>
+              <div className="settings-panel" style={{ borderColor: 'rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.03)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
+                  {[
+                    ['hqesMediaNearEnd', 'Media Near End'],
+                    ['hqesRibbonNearEnd', 'Need to Calibrate Media'],
+                    ['hqesReplacePrinthead', 'Replace Printhead'],
+                    ['hqesCleanPrinthead', 'Clean Printhead'],
+                  ].map(([key, label]) => (
+                    <label key={key} className="check-item">
+                      <input type="checkbox" style={{ accentColor: '#F59E0B' }} checked={isTruthy(form[key])} onChange={() => toggle(key)} />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="settings-section">
+              <h3 className="settings-section-title">~HQES Response Preview</h3>
+              <pre className="code-block">{hqesPreview}</pre>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="modal-footer">

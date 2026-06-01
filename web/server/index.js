@@ -55,6 +55,12 @@ const defaults = {
   hqesRibbonNearEnd: false,
   hqesReplacePrinthead: false,
   hqesCleanPrinthead: false,
+  // EPL status flags — used in #!Xn response (S field). 0000=OK, else error.
+  eplMediaOut: false,
+  eplHeadOpen: false,
+  eplRibbonOut: false,
+  eplCutterFault: false,
+  eplPrintheadOverTemp: false,
 };
 
 const CONFIG_FILE = path.join(__dirname, 'config.json');
@@ -402,13 +408,60 @@ async function processEplForPrinter(printerId, data) {
   const textData = data.toString('utf8').trim();
   if (!textData) return null;
 
-  if (textData === '#!A1') {
+  // #!Xn — Status query. Driver expects LF-terminated response.
+  // Format: SaaaaAbcdMqqqqqqFeeeeeeKxxxxxxxx\n  (spec page 18-19)
+  if (/^#!X\d/.test(textData)) {
+    const response = _buildEplStatusResponse(printer);
+    emitNotification(`EPL status queried → ${response}`, 'info', printerId);
+    return Buffer.from(response + '\n', 'utf8');
+  }
+
+  // #!CA — Clear All (reset spooler, no response)
+  if (textData === '#!CA' || textData === '#!CF') {
+    emitNotification('EPL Clear All', 'info', printerId);
+    return null;
+  }
+
+  // #!SR — Start/Resume printing
+  if (textData === '#!SR') {
+    emitNotification('EPL Resume printing', 'info', printerId);
+    return null;
+  }
+
+  // #!SP — Stop printing
+  if (textData === '#!SP') {
+    emitNotification('EPL Stop printing', 'info', printerId);
+    return null;
+  }
+
+  // #!Pn — Interface deactivation (no response)
+  if (/^#!P\d/.test(textData)) {
+    emitNotification('EPL interface deactivated', 'info', printerId);
+    return null;
+  }
+
+  // #!An — Interface activation
+  if (/^#!A\d/.test(textData)) {
     emitNotification('EPL interface activated', 'info', printerId);
     return null;
   }
 
   await renderEplLabelsForPrinter(printerId, textData);
   return null;
+}
+
+// Build #!Xn response: S=status M=labelsRemaining F=spoolerBytes K=firmware
+// S=0000 means OK; any other 4-digit code means error (shown on printer display).
+function _buildEplStatusResponse(printer) {
+  let statusNum = '0000';
+  if (printer.eplMediaOut)          statusNum = '0016';
+  else if (printer.eplHeadOpen)     statusNum = '0031';
+  else if (printer.eplRibbonOut)    statusNum = '0032';
+  else if (printer.eplCutterFault)  statusNum = '0070';
+  else if (printer.eplPrintheadOverTemp) statusNum = '0050';
+
+  // A100 = status requested (b=1), already acknowledged (c=0), no open format (d=0)
+  return `S${statusNum}A100M000000F065536K7.10`;
 }
 
 // ── TCP Server (per-printer) ────────────────────────────────────────
