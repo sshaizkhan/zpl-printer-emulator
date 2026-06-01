@@ -413,9 +413,12 @@ async function processEplForPrinter(printerId, data) {
   const isSingleCommand = !textData.includes('\n');
 
   if (isSingleCommand) {
+    console.log(`[EPL][${printerId}] Immediate command: ${textData}`);
+
     // #!Xn — Status query. Driver expects LF-terminated response.
     if (/^#!X\d/.test(textData)) {
       const response = _buildEplStatusResponse(printer);
+      console.log(`[EPL][${printerId}] Status response: ${response}`);
       emitNotification(`EPL status queried → ${response}`, 'info', printerId);
       return Buffer.from(response + '\n', 'utf8');
     }
@@ -447,7 +450,7 @@ async function processEplForPrinter(printerId, data) {
   }
 
   // Multi-line or unrecognised single-line → render as EPL label job
-  // (parseEpl handles #!A1 at the start of a job transparently)
+  console.log(`[EPL][${printerId}] Print job received (${textData.length} bytes):\n${textData}`);
   await renderEplLabelsForPrinter(printerId, textData);
   return null;
 }
