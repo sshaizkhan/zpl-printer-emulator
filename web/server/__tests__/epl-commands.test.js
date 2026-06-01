@@ -114,3 +114,81 @@ describe('parseEpl', () => {
     expect(spec.elements[0].content).toBe('ALT TEXT');
   });
 });
+
+const { renderEplLabel } = require('../epl-commands');
+
+describe('renderEplLabel', () => {
+  test('returns a Buffer', async () => {
+    const spec = { width: 50, height: 30, quantity: 1, elements: [] };
+    const result = await renderEplLabel(spec, 8);
+    expect(Buffer.isBuffer(result)).toBe(true);
+  });
+
+  test('output has PNG magic bytes', async () => {
+    const spec = { width: 50, height: 30, quantity: 1, elements: [] };
+    const result = await renderEplLabel(spec, 8);
+    // PNG files start with: 89 50 4E 47 0D 0A 1A 0A
+    expect(result[0]).toBe(0x89);
+    expect(result[1]).toBe(0x50); // 'P'
+    expect(result[2]).toBe(0x4E); // 'N'
+    expect(result[3]).toBe(0x47); // 'G'
+  });
+
+  test('renders text element without throwing', async () => {
+    const spec = {
+      width: 70,
+      height: 50,
+      quantity: 1,
+      elements: [{ type: 'text', x: 5, y: 10, rotation: 0, font: '0', mag: '2', content: 'HELLO' }],
+    };
+    await expect(renderEplLabel(spec, 8)).resolves.toBeDefined();
+  });
+
+  test('renders rect element without throwing', async () => {
+    const spec = {
+      width: 70,
+      height: 50,
+      quantity: 1,
+      elements: [{ type: 'rect', x: 5, y: 5, w: 40, h: 20, thickness: 0.5 }],
+    };
+    await expect(renderEplLabel(spec, 8)).resolves.toBeDefined();
+  });
+
+  test('renders line element without throwing', async () => {
+    const spec = {
+      width: 70,
+      height: 50,
+      quantity: 1,
+      elements: [{ type: 'line', x1: 5, y1: 10, x2: 60, y2: 10, thickness: 0.3 }],
+    };
+    await expect(renderEplLabel(spec, 8)).resolves.toBeDefined();
+  });
+
+  test('renders ellipse element without throwing', async () => {
+    const spec = {
+      width: 70,
+      height: 50,
+      quantity: 1,
+      elements: [{ type: 'ellipse', x: 35, y: 25, rx: 15, ry: 10, thickness: 0.3 }],
+    };
+    await expect(renderEplLabel(spec, 8)).resolves.toBeDefined();
+  });
+
+  test('renders barcode element without throwing', async () => {
+    const spec = {
+      width: 70,
+      height: 50,
+      quantity: 1,
+      elements: [{ type: 'barcode', x: 5, y: 10, rotation: 0, barcodeType: '1', mag: '2', data: '12345' }],
+    };
+    await expect(renderEplLabel(spec, 8)).resolves.toBeDefined();
+  });
+
+  test('uses dpmm to scale canvas size', async () => {
+    const spec = { width: 25.4, height: 25.4, quantity: 1, elements: [] }; // 1 inch x 1 inch
+    const buf8 = await renderEplLabel(spec, 8);   // 8dpmm = 203dpi → ~203x203px
+    const buf12 = await renderEplLabel(spec, 12); // 12dpmm = 305dpi → ~305x305px
+    // Higher dpmm → larger buffer
+    expect(buf12.length).toBeGreaterThan(buf8.length);
+  });
+});
