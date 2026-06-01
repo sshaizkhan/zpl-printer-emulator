@@ -658,18 +658,22 @@ app.post('/api/printers/:printerId/print', async (req, res) => {
     const printer = getPrinter(printerId);
     if (!printer) return res.status(404).json({ error: 'Printer not found' });
 
-    const zplData = req.body;
-    if (!zplData || !zplData.trim()) {
-      return res.status(400).json({ error: 'No ZPL data provided' });
+    const labelData = req.body;
+    if (!labelData || !labelData.trim()) {
+      return res.status(400).json({ error: 'No label data provided' });
     }
 
-    const processed = zplData
+    const processed = labelData
       .replace(/\\n/g, '\n')
       .replace(/\\t/g, '\t')
       .replace(/\\r/g, '\r')
       .replace(/\\b/g, '\b');
 
-    await processZplForPrinter(printerId, Buffer.from(processed, 'utf8'));
+    if (printer.language === 'epl') {
+      await processEplForPrinter(printerId, Buffer.from(processed, 'utf8'));
+    } else {
+      await processZplForPrinter(printerId, Buffer.from(processed, 'utf8'));
+    }
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
