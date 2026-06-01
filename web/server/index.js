@@ -558,7 +558,21 @@ function startTcpServer(printerId) {
       }
     }
 
-    sock.on('data', (data) => {
+    sock.on('data', async (data) => {
+      // EPL immediate commands (e.g. #!X0, #!CA, #!SR, #!P1) arrive as short
+      // single-chunk payloads. Fast-path them: respond immediately without the
+      // 100ms debounce so they don't merge with subsequent EPL job data.
+      const currentPrinter = getPrinter(printerId);
+      if (currentPrinter && currentPrinter.language === 'epl') {
+        const chunk = data.toString('utf8').trim();
+        // Immediate command: short, no newline, matches #!XX pattern
+        if (chunk.length <= 8 && !chunk.includes('\n') && /^#!/.test(chunk)) {
+          const response = await processEplForPrinter(printerId, data);
+          if (response) sock.write(response);
+          return; // do NOT accumulate in buffer or debounce
+        }
+      }
+
       buffer = Buffer.concat([buffer, data]);
       emitNotification(
         `${buffer.length} bytes received from ${sock.remoteAddress}:${sock.remotePort}`,
@@ -569,6 +583,7 @@ function startTcpServer(printerId) {
       if (processTimeout) clearTimeout(processTimeout);
       processTimeout = setTimeout(() => {
         const dataToProcess = buffer;
+        buffer = Buffer.alloc(0);
         processData(dataToProcess);
       }, 100);
     });
