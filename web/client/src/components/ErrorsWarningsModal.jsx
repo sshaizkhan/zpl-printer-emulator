@@ -14,7 +14,6 @@ export default function ErrorsWarningsModal({ printerId, onClose }) {
   }, [printers, printerId]);
 
   const toggle = (key) => setForm((f) => ({ ...f, [key]: !f[key] }));
-
   const isTruthy = (val) => [1, '1', true, 'true'].includes(val);
 
   const hqesPreview = useMemo(() => {
@@ -27,16 +26,12 @@ export default function ErrorsWarningsModal({ printerId, onClose }) {
     if (isTruthy(form.hqesMotorOverTemp)) errorFlags |= 0x20;
     if (isTruthy(form.hqesBadPrintheadElement)) errorFlags |= 0x40;
     if (isTruthy(form.hqesPrintheadDetectionError)) errorFlags |= 0x80;
-
     let warningFlags = 0;
     if (isTruthy(form.hqesMediaNearEnd)) warningFlags |= 0x08;
     if (isTruthy(form.hqesRibbonNearEnd)) warningFlags |= 0x01;
     if (isTruthy(form.hqesReplacePrinthead)) warningFlags |= 0x04;
     if (isTruthy(form.hqesCleanPrinthead)) warningFlags |= 0x02;
-
-    const errHex = errorFlags.toString(16).padStart(8, '0');
-    const warnHex = warningFlags.toString(16).padStart(8, '0');
-    return `PRINTER STATUS\nERRORS: 1 00000000 ${errHex}\nWARNINGS: 1 00000000 ${warnHex}`;
+    return `PRINTER STATUS\nERRORS: 1 00000000 ${errorFlags.toString(16).padStart(8,'0')}\nWARNINGS: 1 00000000 ${warningFlags.toString(16).padStart(8,'0')}`;
   }, [form]);
 
   const handleSave = async () => {
@@ -50,86 +45,68 @@ export default function ErrorsWarningsModal({ printerId, onClose }) {
 
   return (
     <Modal title="Errors & Warnings (~HQES)" icon={AlertTriangle} onClose={onClose} size="lg">
-      <div className="max-h-[70vh] overflow-y-auto px-6 py-4">
-        <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+      <div style={{ maxHeight: '68vh', overflowY: 'auto', padding: '1.125rem 1.25rem' }}>
+        <p style={{ fontSize: '0.8125rem', color: 'var(--text-2)', marginBottom: '1rem', lineHeight: 1.5 }}>
           Configure which errors and warnings the emulator reports when a{' '}
-          <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">~HQES</code>{' '}
+          <code style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '4px', padding: '0.1rem 0.375rem' }}>~HQES</code>{' '}
           command is received.
         </p>
 
         {/* Errors */}
-        <div className="mb-4">
-          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400">
-            <span className="h-2 w-2 rounded-full bg-red-500" />
-            Errors
-          </h3>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg border border-red-200 bg-red-50/50 p-3 dark:border-red-900/30 dark:bg-red-900/10">
-            {[
-              ['hqesMediaOut', 'Media Out'],
-              ['hqesRibbonOut', 'Ribbon Out'],
-              ['hqesHeadOpen', 'Head Open'],
-              ['hqesCutterFault', 'Cutter Fault'],
-              ['hqesPrintheadOverTemp', 'Printhead Over-Temp'],
-              ['hqesMotorOverTemp', 'Motor Over-Temp'],
-              ['hqesBadPrintheadElement', 'Bad Printhead Element'],
-              ['hqesPrintheadDetectionError', 'Printhead Detection Error'],
-            ].map(([key, label]) => (
-              <label key={key} className="flex cursor-pointer items-center gap-2.5 rounded py-1">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-red-300 text-red-600 focus:ring-red-500 dark:border-gray-600 dark:bg-gray-700"
-                  checked={isTruthy(form[key])}
-                  onChange={() => toggle(key)}
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
-              </label>
-            ))}
+        <div className="settings-section">
+          <h3 className="settings-section-title" style={{ color: '#EF4444' }}>Errors</h3>
+          <div className="settings-panel" style={{ borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.03)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
+              {[
+                ['hqesMediaOut', 'Media Out'],
+                ['hqesRibbonOut', 'Ribbon Out'],
+                ['hqesHeadOpen', 'Head Open'],
+                ['hqesCutterFault', 'Cutter Fault'],
+                ['hqesPrintheadOverTemp', 'Printhead Over-Temp'],
+                ['hqesMotorOverTemp', 'Motor Over-Temp'],
+                ['hqesBadPrintheadElement', 'Bad Printhead Element'],
+                ['hqesPrintheadDetectionError', 'Printhead Detection Error'],
+              ].map(([key, label]) => (
+                <label key={key} className="check-item">
+                  <input type="checkbox" style={{ accentColor: '#EF4444' }} checked={isTruthy(form[key])} onChange={() => toggle(key)} />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Warnings */}
-        <div className="mb-4">
-          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
-            <span className="h-2 w-2 rounded-full bg-amber-500" />
-            Warnings
-          </h3>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-900/30 dark:bg-amber-900/10">
-            {[
-              ['hqesMediaNearEnd', 'Media Near End'],
-              ['hqesRibbonNearEnd', 'Need to Calibrate Media'],
-              ['hqesReplacePrinthead', 'Replace Printhead'],
-              ['hqesCleanPrinthead', 'Clean Printhead'],
-            ].map(([key, label]) => (
-              <label key={key} className="flex cursor-pointer items-center gap-2.5 rounded py-1">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500 dark:border-gray-600 dark:bg-gray-700"
-                  checked={isTruthy(form[key])}
-                  onChange={() => toggle(key)}
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
-              </label>
-            ))}
+        <div className="settings-section">
+          <h3 className="settings-section-title" style={{ color: '#F59E0B' }}>Warnings</h3>
+          <div className="settings-panel" style={{ borderColor: 'rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.03)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
+              {[
+                ['hqesMediaNearEnd', 'Media Near End'],
+                ['hqesRibbonNearEnd', 'Need to Calibrate Media'],
+                ['hqesReplacePrinthead', 'Replace Printhead'],
+                ['hqesCleanPrinthead', 'Clean Printhead'],
+              ].map(([key, label]) => (
+                <label key={key} className="check-item">
+                  <input type="checkbox" style={{ accentColor: '#F59E0B' }} checked={isTruthy(form[key])} onChange={() => toggle(key)} />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Preview */}
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
-          <h4 className="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-            ~HQES Response Preview
-          </h4>
-          <pre className="rounded-md bg-gray-900 p-3 text-xs text-green-400 dark:bg-black">
-            {hqesPreview}
-          </pre>
+        <div className="settings-section">
+          <h3 className="settings-section-title">Response Preview</h3>
+          <pre className="code-block">{hqesPreview}</pre>
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4 dark:border-gray-700">
-        <button onClick={onClose} className="btn-secondary">
-          Cancel
-        </button>
-        <button onClick={handleSave} className="btn-danger">
-          <Save size={16} />
+      <div className="modal-footer">
+        <button onClick={onClose} className="btn-secondary">Cancel</button>
+        <button onClick={handleSave} className="btn-primary">
+          <Save size={15} />
           Save
         </button>
       </div>

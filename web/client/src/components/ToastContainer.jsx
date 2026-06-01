@@ -2,57 +2,50 @@ import { useEffect } from 'react';
 import useConfigStore from '../store/configStore';
 import { X, CheckCircle, AlertTriangle, Info, XCircle } from 'lucide-react';
 
-const typeConfig = {
-  success: {
-    icon: CheckCircle,
-    bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-    border: 'border-emerald-200 dark:border-emerald-800',
-    text: 'text-emerald-800 dark:text-emerald-300',
-    iconColor: 'text-emerald-500',
-  },
-  error: {
-    icon: XCircle,
-    bg: 'bg-red-50 dark:bg-red-900/20',
-    border: 'border-red-200 dark:border-red-800',
-    text: 'text-red-800 dark:text-red-300',
-    iconColor: 'text-red-500',
-  },
-  warning: {
-    icon: AlertTriangle,
-    bg: 'bg-amber-50 dark:bg-amber-900/20',
-    border: 'border-amber-200 dark:border-amber-800',
-    text: 'text-amber-800 dark:text-amber-300',
-    iconColor: 'text-amber-500',
-  },
-  info: {
-    icon: Info,
-    bg: 'bg-blue-50 dark:bg-blue-900/20',
-    border: 'border-blue-200 dark:border-blue-800',
-    text: 'text-blue-800 dark:text-blue-300',
-    iconColor: 'text-blue-500',
-  },
+const TYPE = {
+  success: { icon: CheckCircle, color: '#10B981', border: 'rgba(16,185,129,0.25)' },
+  error:   { icon: XCircle,     color: '#EF4444', border: 'rgba(239,68,68,0.25)' },
+  warning: { icon: AlertTriangle,color: '#F59E0B', border: 'rgba(245,158,11,0.25)' },
+  info:    { icon: Info,         color: '#3B82F6', border: 'rgba(59,130,246,0.25)' },
 };
 
 function Toast({ notification, onRemove }) {
-  const config = typeConfig[notification.type] || typeConfig.info;
-  const Icon = config.icon;
+  const cfg = TYPE[notification.type] || TYPE.info;
+  const Icon = cfg.icon;
 
   useEffect(() => {
-    const timer = setTimeout(() => onRemove(notification.id), 4000);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => onRemove(notification.id), 4200);
+    return () => clearTimeout(t);
   }, [notification.id, onRemove]);
 
   return (
     <div
-      className={`toast-enter flex items-start gap-3 rounded-lg border ${config.bg} ${config.border} p-3 shadow-lg backdrop-blur-sm`}
+      className="toast-enter"
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '0.625rem',
+        padding: '0.75rem',
+        borderRadius: '10px',
+        border: `1px solid ${cfg.border}`,
+        background: 'var(--surface)',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+      }}
     >
-      <Icon size={18} className={`mt-0.5 flex-none ${config.iconColor}`} />
-      <p className={`flex-1 text-sm ${config.text}`}>{notification.text}</p>
+      <Icon size={15} style={{ color: cfg.color, marginTop: '1px', flexShrink: 0 }} />
+      <p style={{ flex: 1, fontSize: '0.8125rem', color: 'var(--text)', lineHeight: 1.45 }}>
+        {notification.text}
+      </p>
       <button
         onClick={() => onRemove(notification.id)}
-        className="flex-none rounded p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: '18px', height: '18px', border: 'none', background: 'transparent',
+          color: 'var(--text-muted)', cursor: 'pointer', borderRadius: '4px',
+          flexShrink: 0, transition: 'color 0.13s',
+        }}
       >
-        <X size={14} />
+        <X size={12} />
       </button>
     </div>
   );
@@ -60,11 +53,14 @@ function Toast({ notification, onRemove }) {
 
 export default function ToastContainer() {
   const { notifications, removeNotification } = useConfigStore();
-
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-96 flex-col gap-2">
+    <div style={{
+      position: 'fixed', bottom: '1rem', right: '1rem', zIndex: 100,
+      display: 'flex', flexDirection: 'column', gap: '0.5rem',
+      width: '320px', pointerEvents: 'none',
+    }}>
       {notifications.slice(0, 5).map((n) => (
-        <div key={n.id} className="pointer-events-auto">
+        <div key={n.id} style={{ pointerEvents: 'auto' }}>
           <Toast notification={n} onRemove={removeNotification} />
         </div>
       ))}

@@ -4,32 +4,15 @@ import SettingsModal from './SettingsModal';
 import TestModal from './TestModal';
 import ErrorsWarningsModal from './ErrorsWarningsModal';
 import {
-  Printer,
-  PenTool,
-  Settings,
-  FlaskConical,
-  AlertTriangle,
-  Power,
-  PowerOff,
-  Moon,
-  Sun,
-  Trash2,
-  Activity,
-  Plus,
-  X,
+  Printer, PenTool, Settings, FlaskConical, AlertTriangle,
+  Power, Moon, Sun, Trash2, Plus, X,
 } from 'lucide-react';
 
 export default function Layout({ children }) {
   const {
-    activeTab,
-    setActiveTab,
-    printers,
-    activePrinterId,
-    setActivePrinterId,
-    tcpStatuses,
-    labelsByPrinter,
-    darkMode,
-    toggleDarkMode,
+    activeTab, setActiveTab,
+    printers, activePrinterId, setActivePrinterId,
+    tcpStatuses, labelsByPrinter, darkMode, toggleDarkMode,
   } = useConfigStore();
 
   const [showSettings, setShowSettings] = useState(false);
@@ -42,10 +25,10 @@ export default function Layout({ children }) {
 
   const handleToggleTcp = async () => {
     if (!activePrinterId) return;
-    const endpoint = activeTcpStatus.running
+    const ep = activeTcpStatus.running
       ? `/api/printers/${activePrinterId}/tcp/stop`
       : `/api/printers/${activePrinterId}/tcp/start`;
-    await fetch(endpoint, { method: 'POST' });
+    await fetch(ep, { method: 'POST' });
   };
 
   const handleClearLabels = async () => {
@@ -62,9 +45,15 @@ export default function Layout({ children }) {
       body: JSON.stringify({}),
     });
     const data = await res.json();
-    if (data.success) {
-      setActivePrinterId(data.printer.id);
-    }
+    if (data.success) setActivePrinterId(data.printer.id);
+  };
+
+  const handleRemovePrinter = async (e, printerId) => {
+    e.stopPropagation();
+    if (printers.length <= 1) return;
+    const printer = printers.find((p) => p.id === printerId);
+    if (!confirm(`Remove "${printer?.name}"?`)) return;
+    await fetch(`/api/printers/${printerId}`, { method: 'DELETE' });
   };
 
   const handleToggleLanguage = async (lang) => {
@@ -76,210 +65,162 @@ export default function Layout({ children }) {
     });
   };
 
-  const handleRemovePrinter = async (e, printerId) => {
-    e.stopPropagation();
-    if (printers.length <= 1) return;
-    const printer = printers.find((p) => p.id === printerId);
-    if (!confirm(`Remove printer "${printer?.name}"? This will stop its server and clear its labels.`)) return;
-    await fetch(`/api/printers/${printerId}`, { method: 'DELETE' });
-  };
-
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <header className="flex-none border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
-              <Printer size={20} />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-                Printer Emulator
-              </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                EN Systems &middot; v5.0.0
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* TCP Status Indicator */}
-            <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-800">
-              <Activity
-                size={14}
-                className={activeTcpStatus.running ? 'text-emerald-500' : 'text-gray-400'}
-              />
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                {activeTcpStatus.running
-                  ? `${activePrinter.host || '0.0.0.0'}:${activePrinter.port || '9100'}`
-                  : 'Offline'}
-              </span>
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  activeTcpStatus.running ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'
-                }`}
-              />
-            </div>
-
-            {/* Toggle TCP */}
-            <button
-              onClick={handleToggleTcp}
-              className={`btn-icon ${
-                activeTcpStatus.running
-                  ? 'text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20'
-                  : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-              }`}
-              title={activeTcpStatus.running ? 'Stop TCP Server' : 'Start TCP Server'}
-            >
-              {activeTcpStatus.running ? <Power size={20} /> : <PowerOff size={20} />}
-            </button>
-
-            <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
-
-            <button onClick={toggleDarkMode} className="btn-icon" title="Toggle dark mode">
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
+    <div className="flex h-full flex-col" style={{ background: 'var(--bg)' }}>
+      {/* App Bar */}
+      <header className="app-bar">
+        <div className="flex items-center gap-2.5">
+          <div className="app-logo"><Printer size={17} /></div>
+          <div>
+            <h1 className="app-title">Printer Emulator</h1>
+            <p className="app-version">EN Systems · v5.0.0</p>
           </div>
         </div>
 
-        {/* Navigation & Toolbar */}
-        <div className="flex items-center justify-between border-t border-gray-100 px-4 py-1.5 dark:border-gray-800">
-          <nav className="flex gap-1">
+        <div className="flex items-center gap-2">
+          <div className="lang-pill">
             <button
-              onClick={() => setActiveTab('printer')}
-              className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
-                activeTab === 'printer'
-                  ? 'bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400'
-                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200'
-              }`}
-            >
-              <Printer size={16} />
-              Printer
-            </button>
+              onClick={() => handleToggleLanguage('zpl')}
+              className={activePrinter.language !== 'epl' ? 'active' : ''}
+            >ZPL</button>
             <button
-              onClick={() => setActiveTab('designer')}
-              className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
-                activeTab === 'designer'
-                  ? 'bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400'
-                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200'
-              }`}
-            >
-              <PenTool size={16} />
-              Label Designer
-            </button>
-          </nav>
-
-          <div className="flex items-center gap-1">
-            {/* Language toggle for active printer */}
-            <div className="mr-1 flex overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600">
-              <button
-                onClick={() => handleToggleLanguage('zpl')}
-                className={`px-3 py-1 text-xs font-medium transition-colors ${
-                  activePrinter.language !== 'epl'
-                    ? 'bg-brand-600 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-                }`}
-              >
-                ZPL
-              </button>
-              <button
-                onClick={() => handleToggleLanguage('epl')}
-                className={`px-3 py-1 text-xs font-medium transition-colors ${
-                  activePrinter.language === 'epl'
-                    ? 'bg-brand-600 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-                }`}
-              >
-                EPL
-              </button>
-            </div>
-            <button
-              onClick={() => setShowTest(true)}
-              className="btn-ghost text-xs"
-              title="Test Printer"
-            >
-              <FlaskConical size={15} />
-              Test
-            </button>
-            <button
-              onClick={() => setShowErrors(true)}
-              className="btn-ghost text-xs text-red-600 dark:text-red-400"
-              title="Errors & Warnings"
-            >
-              <AlertTriangle size={15} />
-              Errors
-            </button>
-            <button
-              onClick={handleClearLabels}
-              className="btn-ghost text-xs"
-              title="Clear Labels"
-            >
-              <Trash2 size={15} />
-              Clear
-            </button>
-            <button
-              onClick={() => setShowSettings(true)}
-              className="btn-ghost text-xs"
-              title="Settings"
-            >
-              <Settings size={15} />
-              Settings
-            </button>
+              onClick={() => handleToggleLanguage('epl')}
+              className={activePrinter.language === 'epl' ? 'active' : ''}
+            >EPL</button>
           </div>
+
+          <div className="status-chip">
+            <span className={`led ${activeTcpStatus.running ? 'online' : ''}`} />
+            <span>
+              {activeTcpStatus.running
+                ? `${activePrinter.host || '0.0.0.0'}:${activePrinter.port || '9100'}`
+                : 'offline'}
+            </span>
+          </div>
+
+          <button
+            onClick={handleToggleTcp}
+            className={`bar-icon-btn ${activeTcpStatus.running ? 'power-on' : ''}`}
+            title={activeTcpStatus.running ? 'Stop TCP Server' : 'Start TCP Server'}
+          >
+            <Power size={16} />
+          </button>
+
+          <span className="bar-divider" />
+
+          <button onClick={toggleDarkMode} className="bar-icon-btn" title="Toggle theme">
+            {darkMode ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
         </div>
-
-        {/* Printer Sub-Tabs */}
-        {activeTab === 'printer' && printers.length > 0 && (
-          <div className="flex items-center gap-1 border-t border-gray-100 px-4 py-1 dark:border-gray-800">
-            {printers.map((p) => {
-              const status = tcpStatuses[p.id] || {};
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => setActivePrinterId(p.id)}
-                  className={`flex items-center gap-1.5 rounded-t-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                    p.id === activePrinterId
-                      ? 'bg-white border border-b-0 border-gray-200 text-brand-700 dark:bg-gray-900 dark:border-gray-700 dark:text-brand-400'
-                      : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
-                  }`}
-                >
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      status.running ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
-                    }`}
-                  />
-                  {p.name}
-                  <span className="text-[10px] text-gray-400">:{p.port}</span>
-                  {printers.length > 1 && (
-                    <span
-                      onClick={(e) => handleRemovePrinter(e, p.id)}
-                      className="ml-0.5 rounded p-0.5 text-gray-400 hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-900/30"
-                    >
-                      <X size={10} />
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-            <button
-              onClick={handleAddPrinter}
-              className="ml-1 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-emerald-600 dark:hover:bg-gray-800"
-              title="Add Printer"
-            >
-              <Plus size={14} />
-            </button>
-          </div>
-        )}
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-hidden">{children}</main>
+      {/* Body */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Nav Rail */}
+        <aside className="nav-rail">
+          <div className="nav-body">
+            <div className="nav-section">
+              <p className="nav-section-label">Views</p>
+              <button
+                onClick={() => setActiveTab('printer')}
+                className={`nav-item ${activeTab === 'printer' ? 'active' : ''}`}
+              >
+                <Printer size={14} />
+                Printer Output
+              </button>
+              <button
+                onClick={() => setActiveTab('designer')}
+                className={`nav-item ${activeTab === 'designer' ? 'active' : ''}`}
+              >
+                <PenTool size={14} />
+                Label Designer
+              </button>
+            </div>
 
-      {/* Modals */}
-      {showSettings && <SettingsModal printerId={activePrinterId} onClose={() => setShowSettings(false)} />}
-      {showTest && <TestModal printerId={activePrinterId} language={activePrinter.language} onClose={() => setShowTest(false)} />}
-      {showErrors && <ErrorsWarningsModal printerId={activePrinterId} onClose={() => setShowErrors(false)} />}
+            <div className="nav-section">
+              <p className="nav-section-label">
+                Printers
+                <button onClick={handleAddPrinter} className="nav-add-btn" title="Add Printer">
+                  <Plus size={11} />
+                </button>
+              </p>
+              {printers.map((p) => {
+                const status = tcpStatuses[p.id] || {};
+                const isActive = p.id === activePrinterId;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setActivePrinterId(p.id)}
+                    className={`printer-nav-item ${isActive ? 'active' : ''}`}
+                  >
+                    <span className={`led ${status.running ? 'online' : ''}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="printer-name">{p.name}</p>
+                      <p className="printer-meta">:{p.port} · {(p.language || 'zpl').toUpperCase()}</p>
+                    </div>
+                    {printers.length > 1 && (
+                      <button
+                        onClick={(e) => handleRemovePrinter(e, p.id)}
+                        className="printer-remove-btn"
+                      >
+                        <X size={10} />
+                      </button>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="nav-section">
+              <p className="nav-section-label">Tools</p>
+              <button onClick={() => setShowTest(true)} className="nav-item">
+                <FlaskConical size={14} />
+                Test Print
+              </button>
+              <button onClick={() => setShowErrors(true)} className="nav-item">
+                <AlertTriangle size={14} style={{ color: '#F59E0B' }} />
+                Errors & Warnings
+              </button>
+              <button
+                onClick={handleClearLabels}
+                className="nav-item"
+                disabled={activeLabels.length === 0}
+              >
+                <Trash2 size={14} />
+                Clear Labels
+                {activeLabels.length > 0 && (
+                  <span
+                    className="ml-auto font-mono text-[10px]"
+                    style={{ color: 'var(--nav-label)' }}
+                  >
+                    {activeLabels.length}
+                  </span>
+                )}
+              </button>
+              <button onClick={() => setShowSettings(true)} className="nav-item">
+                <Settings size={14} />
+                Settings
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <main className="flex-1 overflow-hidden">{children}</main>
+      </div>
+
+      {showSettings && (
+        <SettingsModal printerId={activePrinterId} onClose={() => setShowSettings(false)} />
+      )}
+      {showTest && (
+        <TestModal
+          printerId={activePrinterId}
+          language={activePrinter.language}
+          onClose={() => setShowTest(false)}
+        />
+      )}
+      {showErrors && (
+        <ErrorsWarningsModal printerId={activePrinterId} onClose={() => setShowErrors(false)} />
+      )}
     </div>
   );
 }
