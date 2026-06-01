@@ -234,43 +234,23 @@ const EPL_FONT_BASE_PX = {
   '104': 26, '105': 30, '106': 35, '107': 50,
 };
 
-// Real EPL printer character widths (px per char at M=1, 8dpmm).
-// Derived from the spec page-8 example: T positions + known centering produce these char widths.
-// Used to compute intended visual center, matching real-printer layout regardless of our font metrics.
-const EPL_REAL_CHAR_PX = {
-  '100': 7, '101': 9, '102': 11, '103': 12,
-  '104': 13, '105': 15, '106': 16, '107': 27,
-};
 
 function _renderText(ctx, el, x, y, dpi) {
   const basePx = EPL_FONT_BASE_PX[String(el.font)] || 16;
-  const realCharPx = EPL_REAL_CHAR_PX[String(el.font)] || 13;
   const magY = el.magY || 1;
-  const magX = el.magX || 1;
   const fontSize = Math.round(basePx * magY * (dpi / 203));
   const rot = (el.rotation || 0) * 90;
   const text = el.content || '';
 
+  // T is the left-edge anchor, J is the text baseline — respect EPL coordinates exactly.
+  // Visual differences vs real printer are font metric differences (web font ≠ bitmap font).
   ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate((rot * Math.PI) / 180);
   ctx.font = `bold ${fontSize}px monospace`;
   ctx.fillStyle = '#000000';
   ctx.textBaseline = 'alphabetic';
-
-  if (rot === 0 || rot === 180) {
-    // Horizontal text: compute real-printer center (T is left-edge in real bitmap fonts).
-    // Our web font has different char widths so we center at the intended printer position.
-    const realCharW = realCharPx * magX * (dpi / 203);
-    const realCenter = x + (realCharW * text.length) / 2;
-    ctx.translate(realCenter, y);
-    ctx.rotate((rot * Math.PI) / 180);
-    ctx.textAlign = 'center';
-  } else {
-    // Rotated 90°/270°: T is the baseline x position (vertical line on canvas), no centering.
-    ctx.translate(x, y);
-    ctx.rotate((rot * Math.PI) / 180);
-    ctx.textAlign = 'left';
-  }
-
+  ctx.textAlign = 'left';
   ctx.fillText(text, 0, 0);
   ctx.restore();
 }
