@@ -67,6 +67,15 @@ export default function Layout({ children }) {
     }
   };
 
+  const handleToggleLanguage = async (lang) => {
+    if (!activePrinterId) return;
+    await fetch(`/api/printers/${activePrinterId}/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ language: lang }),
+    });
+  };
+
   const handleRemovePrinter = async (e, printerId) => {
     e.stopPropagation();
     if (printers.length <= 1) return;
@@ -86,7 +95,7 @@ export default function Layout({ children }) {
             </div>
             <div>
               <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-                ZPL Printer Emulator
+                Printer Emulator
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 EN Systems &middot; v5.0.0
@@ -162,6 +171,29 @@ export default function Layout({ children }) {
           </nav>
 
           <div className="flex items-center gap-1">
+            {/* Language toggle for active printer */}
+            <div className="mr-1 flex overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600">
+              <button
+                onClick={() => handleToggleLanguage('zpl')}
+                className={`px-3 py-1 text-xs font-medium transition-colors ${
+                  activePrinter.language !== 'epl'
+                    ? 'bg-brand-600 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                }`}
+              >
+                ZPL
+              </button>
+              <button
+                onClick={() => handleToggleLanguage('epl')}
+                className={`px-3 py-1 text-xs font-medium transition-colors ${
+                  activePrinter.language === 'epl'
+                    ? 'bg-brand-600 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                }`}
+              >
+                EPL
+              </button>
+            </div>
             <button
               onClick={() => setShowTest(true)}
               className="btn-ghost text-xs"
@@ -246,7 +278,7 @@ export default function Layout({ children }) {
 
       {/* Modals */}
       {showSettings && <SettingsModal printerId={activePrinterId} onClose={() => setShowSettings(false)} />}
-      {showTest && <TestModal printerId={activePrinterId} onClose={() => setShowTest(false)} />}
+      {showTest && <TestModal printerId={activePrinterId} language={activePrinter.language} onClose={() => setShowTest(false)} />}
       {showErrors && <ErrorsWarningsModal printerId={activePrinterId} onClose={() => setShowErrors(false)} />}
     </div>
   );
