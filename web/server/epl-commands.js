@@ -20,8 +20,17 @@ function parseContentCommand(params) {
   if (tripleSlashIdx === -1) return null;
 
   const header = params.substring(0, tripleSlashIdx);
-  const content = params.substring(tripleSlashIdx + 3).replace(/#?G$/, '').trim();
   const parts = header.split('/');
+
+  // Full structured segment: "[GS1-AIs]///display-text" or "///display-text".
+  // The display text (and barcode data) lives after the LAST '///' in the segment.
+  const segment = params.substring(tripleSlashIdx + 3);
+  const lastTriple = segment.lastIndexOf('///');
+  // Tokenizer splits on '#', so '#G' terminator is never present in params —
+  // do NOT strip trailing 'G' (content can legitimately end with 'G', e.g. "P&G").
+  const content = lastTriple !== -1
+    ? segment.substring(lastTriple + 3).trim()
+    : segment.trim();
 
   return {
     rot: parseInt(parts[0]) || 0,
@@ -134,14 +143,15 @@ function parseEpl(data) {
       }
 
       case 'YR': {
-        // Geometric commands use plain /‑separated params, no /// content separator
+        // Format: #YR<p1>/<p2>/<thickness>/<width>/<height>#G
+        // p1/p2 are style flags; width and height are at indices 3 and 4.
         const parts = params.replace(/#?G$/, '').split('/');
         spec.elements.push({
           type: 'rect',
           x: curX,
           y: curY,
-          w: parseFloat(parts[0]) || 0,
-          h: parseFloat(parts[1]) || 0,
+          w: parseFloat(parts[3]) || 0,
+          h: parseFloat(parts[4]) || 0,
           thickness: parseFloat(parts[2]) || 0.3,
         });
         break;
@@ -311,9 +321,15 @@ function _renderRect(ctx, el, x, y, dpi) {
   const h = Math.round((el.h * dpi) / 25.4);
   const lw = Math.max(1, Math.round((el.thickness * dpi) / 25.4));
 
+  // Draw outline as four filled strips so narrow "line" rects (w or h ≈ lw)
+  // render at the correct thickness. strokeRect centers the stroke on the
+  // boundary, making thin rects appear twice as wide as intended.
   ctx.save();
-  ctx.lineWidth = lw;
-  ctx.strokeRect(x, y, w, h);
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(x, y, w, lw);               // top
+  ctx.fillRect(x, y + h - lw, w, lw);      // bottom
+  ctx.fillRect(x, y, lw, h);               // left
+  ctx.fillRect(x + w - lw, y, lw, h);      // right
   ctx.restore();
 }
 

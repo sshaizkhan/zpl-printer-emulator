@@ -349,6 +349,15 @@ async function renderEplLabelsForPrinter(printerId, data) {
     return;
   }
 
+  if (process.env.EPL_DEBUG === '1') {
+    console.log(`[EPL][${printerId}] Parsed spec: ${JSON.stringify(spec, null, 2)}`);
+  }
+
+  if (spec.elements.length === 0) {
+    console.log(`[EPL][${printerId}] No drawable elements — skipping render`);
+    return;
+  }
+
   const dpmm = 8; // EPL coords are in mm; 8dpmm (203dpi) is sufficient for emulation
   let buffer;
   try {
@@ -449,14 +458,33 @@ async function processEplForPrinter(printerId, data) {
     }
   }
 
-  // Multi-line or unrecognised single-line → render as EPL label job
-  if (process.env.EPL_DEBUG === '1') {
-    console.log(`[EPL][${printerId}] Print job received (${textData.length} bytes):\n${textData}`);
-  } else {
-    console.log(`[EPL][${printerId}] Print job received (${textData.length} bytes)`);
+  // Multi-line payload: extract any embedded #!Xn status query before rendering.
+  // The C++ driver sometimes sends label data and the status query in the same
+  // TCP chunk (e.g. "#!A1\n<label>\n#!X0\n"), which bypasses the fast-path.
+  let labelData = textData;
+  let statusResponse = null;
+  const lines = textData.split('\n');
+  const statusLineIdx = lines.findIndex(l => /^#!X\d/.test(l.trim()));
+  if (statusLineIdx !== -1) {
+    const statusLine = lines[statusLineIdx].trim();
+    console.log(`[EPL][${printerId}] Immediate command (embedded): ${statusLine}`);
+    statusResponse = _buildEplStatusResponse(printer);
+    console.log(`[EPL][${printerId}] Status response: ${statusResponse}`);
+    emitNotification(`EPL status queried → ${statusResponse}`, 'info', printerId);
+    lines.splice(statusLineIdx, 1);
+    labelData = lines.join('\n').trim();
   }
-  await renderEplLabelsForPrinter(printerId, textData);
-  return null;
+
+  if (labelData) {
+    if (process.env.EPL_DEBUG === '1') {
+      console.log(`[EPL][${printerId}] Print job received (${labelData.length} bytes):\n${labelData}`);
+    } else {
+      console.log(`[EPL][${printerId}] Print job received (${labelData.length} bytes)`);
+    }
+    await renderEplLabelsForPrinter(printerId, labelData);
+  }
+
+  return statusResponse ? Buffer.from(statusResponse + '\n', 'utf8') : null;
 }
 
 // Build #!Xn response: S=status M=labelsRemaining F=spoolerBytes K=firmware
