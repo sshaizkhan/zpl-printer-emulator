@@ -43,6 +43,7 @@ const defaults = {
   zplPrinterPaused: false,
   zplPaperJam: false,
   zplRewindFault: false,
+  disableHqes: false,
   hqesMediaOut: false,
   hqesRibbonOut: false,
   hqesHeadOpen: false,
@@ -105,6 +106,7 @@ let state = loadConfig();
 
 // Per-printer runtime state
 let tcpServers = {};          // printerId → net.Server
+let tcpSockets = {};          // printerId → Set<net.Socket>
 let labelHistories = {};      // printerId → label[]
 let zplCommandInstances = {}; // printerId → ZplCommands
 
@@ -229,7 +231,6 @@ async function processZplForPrinter(printerId, data) {
       return cmdResult.response ? Buffer.from(cmdResult.response, 'utf8') : null;
     }
     const response = zplCmds.getResponse(textData);
-    emitNotification('Response sent for internal command', 'info', printerId);
     return Buffer.from(response, 'utf8');
   }
 
@@ -246,7 +247,6 @@ async function processZplForPrinter(printerId, data) {
         emitNotification(`Command ${cmd} executed: ${result.message}`, 'info', printerId);
       } else {
         const response = zplCmds.getResponse(cmd);
-        emitNotification('Response sent for internal command', 'info', printerId);
         responseBuffers.push(Buffer.from(response, 'utf8'));
       }
     }
@@ -512,11 +512,13 @@ function startTcpServer(printerId) {
   const server = net.createServer();
   server.listen(parseInt(printer.port), printer.host);
   tcpServers[printerId] = server;
+  tcpSockets[printerId] = new Set();
 
   emitNotification(`TCP Printer "${printer.name}" started on ${printer.host}:${printer.port}`, 'success', printerId);
   io.emit('tcp-status', { printerId, running: true, host: printer.host, port: printer.port });
 
   server.on('connection', (sock) => {
+    tcpSockets[printerId].add(sock);
     const clientInfo = `${sock.remoteAddress}:${sock.remotePort}`;
     console.log(`TCP CONNECTED [${printer.name}]:`, clientInfo);
     io.emit('tcp-connection', { printerId, client: clientInfo, event: 'connected' });
@@ -587,6 +589,8 @@ function startTcpServer(printerId) {
     }
 
     sock.on('data', async (data) => {
+      if (!tcpServers[printerId]) return;
+
       // EPL immediate commands (e.g. #!X0, #!CA, #!SR, #!P1) arrive as short
       // single-chunk payloads. Fast-path them: respond immediately without the
       // 100ms debounce so they don't merge with subsequent EPL job data.
@@ -602,14 +606,10 @@ function startTcpServer(printerId) {
       }
 
       buffer = Buffer.concat([buffer, data]);
-      emitNotification(
-        `${buffer.length} bytes received from ${sock.remoteAddress}:${sock.remotePort}`,
-        'info',
-        printerId
-      );
 
       if (processTimeout) clearTimeout(processTimeout);
       processTimeout = setTimeout(() => {
+        if (!tcpServers[printerId]) return;
         const dataToProcess = buffer;
         buffer = Buffer.alloc(0);
         processData(dataToProcess);
@@ -617,6 +617,7 @@ function startTcpServer(printerId) {
     });
 
     sock.on('close', () => {
+      tcpSockets[printerId]?.delete(sock);
       io.emit('tcp-connection', { printerId, client: clientInfo, event: 'disconnected' });
     });
 
@@ -629,6 +630,7 @@ function startTcpServer(printerId) {
     emitNotification(`TCP Server error on "${printer.name}": ${err.message}`, 'error', printerId);
     io.emit('tcp-status', { printerId, running: false, error: err.message });
     delete tcpServers[printerId];
+    delete tcpSockets[printerId];
   });
 }
 
@@ -637,6 +639,14 @@ function stopTcpServer(printerId) {
   const printer = getPrinter(printerId);
   tcpServers[printerId].close();
   delete tcpServers[printerId];
+
+  if (tcpSockets[printerId]) {
+    for (const sock of tcpSockets[printerId]) {
+      sock.destroy();
+    }
+    delete tcpSockets[printerId];
+  }
+
   emitNotification(`TCP Printer "${printer?.name}" stopped`, 'info', printerId);
   io.emit('tcp-status', { printerId, running: false });
 }

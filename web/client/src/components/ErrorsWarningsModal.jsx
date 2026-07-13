@@ -124,6 +124,22 @@ export default function ErrorsWarningsModal({ printerId, onClose }) {
             </p>
 
             <div className="settings-section">
+              <div className="settings-panel" style={{ display: 'flex', alignItems: 'center' }}>
+                <label className="check-item" style={{ width: '100%' }}>
+                  <input
+                    type="checkbox"
+                    checked={!isTruthy(form.disableHqes)}
+                    onChange={() => toggle('disableHqes')}
+                  />
+                  <span>
+                    Support <code style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '4px', padding: '0.1rem 0.375rem' }}>~HQES</code>{' '}
+                    (uncheck to emulate a 3rd-party printer that doesn't respond to this command)
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="settings-section">
               <h3 className="settings-section-title" style={{ color: '#EF4444' }}>Errors</h3>
               <div className="settings-panel" style={{ borderColor: 'rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.03)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
