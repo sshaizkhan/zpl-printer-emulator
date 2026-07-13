@@ -114,29 +114,6 @@ export default function SettingsModal({ printerId, onClose }) {
             <input type="text" className="input-field" value={form.path || '/tmp/labels'} onChange={(e) => update('path', e.target.value)} disabled={!form.saveLabels} placeholder="/path/to/labels" />
           </div>
         </Section>
-
-        {form.language !== 'epl' && (
-          <Section title="ZPL Status (~HS)">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0 1rem' }}>
-              {[
-                ['zplHeadOpen', 'Head Open'],
-                ['zplPaperOut', 'Paper Out'],
-                ['zplRibbonOut', 'Ribbon Out'],
-                ['zplPaperJam', 'Paper Jam'],
-                ['zplPrinterPaused', 'Printer Paused'],
-                ['zplCutterFault', 'Cutter Fault'],
-                ['zplHeadTooHot', 'Head Too Hot'],
-                ['zplMotorOverheat', 'Motor Overheat'],
-                ['zplRewindFault', 'Rewind Fault'],
-              ].map(([key, label]) => (
-                <label key={key} className="check-item">
-                  <input type="checkbox" checked={!!form[key]} onChange={() => toggle(key)} />
-                  <span>{label}</span>
-                </label>
-              ))}
-            </div>
-          </Section>
-        )}
       </div>
 
       <div className="modal-footer">

@@ -3,9 +3,10 @@ import useConfigStore from '../store/configStore';
 import SettingsModal from './SettingsModal';
 import TestModal from './TestModal';
 import ErrorsWarningsModal from './ErrorsWarningsModal';
+import HostStatusModal from './HostStatusModal';
 import {
   Printer, PenTool, Settings, FlaskConical, AlertTriangle,
-  Power, Moon, Sun, Trash2, Plus, X,
+  Power, Moon, Sun, Trash2, Plus, X, Radio,
 } from 'lucide-react';
 
 export default function Layout({ children }) {
@@ -18,6 +19,7 @@ export default function Layout({ children }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showTest, setShowTest] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  const [showHostStatus, setShowHostStatus] = useState(false);
 
   const activePrinter = printers.find((p) => p.id === activePrinterId) || printers[0] || {};
   const activeTcpStatus = tcpStatuses[activePrinterId] || { running: false };
@@ -179,8 +181,14 @@ export default function Layout({ children }) {
               </button>
               <button onClick={() => setShowErrors(true)} className="nav-item">
                 <AlertTriangle size={14} style={{ color: '#F59E0B' }} />
-                Errors & Warnings
+                {activePrinter.language === 'epl' ? 'Errors (#!Xn)' : 'Host Query (~HQES)'}
               </button>
+              {activePrinter.language !== 'epl' && (
+                <button onClick={() => setShowHostStatus(true)} className="nav-item">
+                  <Radio size={14} style={{ color: '#38BDF8' }} />
+                  Host Status (~HS)
+                </button>
+              )}
               <button
                 onClick={handleClearLabels}
                 className="nav-item"
@@ -220,6 +228,9 @@ export default function Layout({ children }) {
       )}
       {showErrors && (
         <ErrorsWarningsModal printerId={activePrinterId} onClose={() => setShowErrors(false)} />
+      )}
+      {showHostStatus && (
+        <HostStatusModal printerId={activePrinterId} onClose={() => setShowHostStatus(false)} />
       )}
     </div>
   );

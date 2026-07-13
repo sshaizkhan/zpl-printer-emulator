@@ -60,7 +60,7 @@ export default function ErrorsWarningsModal({ printerId, onClose }) {
 
   return (
     <Modal
-      title={isEpl ? 'EPL Errors (#!Xn)' : 'Errors & Warnings (~HQES)'}
+      title={isEpl ? 'EPL Errors (#!Xn)' : 'Host Query (~HQES)'}
       icon={AlertTriangle}
       onClose={onClose}
       size="lg"
