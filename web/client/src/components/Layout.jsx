@@ -14,7 +14,6 @@ import {
   Moon,
   Sun,
   Trash2,
-  Activity,
   Plus,
   X,
 } from 'lucide-react';
@@ -95,22 +94,14 @@ export default function Layout({ children }) {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* TCP Status Indicator */}
-            <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-800">
-              <Activity
-                size={14}
-                className={activeTcpStatus.running ? 'text-emerald-500' : 'text-gray-400'}
-              />
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+            {/* TCP Status Indicator — LCD-style readout */}
+            <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-800 dark:bg-black/40">
+              <span className={`led-dot ${activeTcpStatus.running ? 'is-live' : ''}`} />
+              <span className="mono-feed text-gray-600 dark:text-gray-300">
                 {activeTcpStatus.running
                   ? `${activePrinter.host || '0.0.0.0'}:${activePrinter.port || '9100'}`
-                  : 'Offline'}
+                  : 'OFFLINE'}
               </span>
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  activeTcpStatus.running ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'
-                }`}
-              />
             </div>
 
             {/* Toggle TCP */}
