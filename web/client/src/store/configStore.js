@@ -10,7 +10,7 @@ const useConfigStore = create((set, get) => ({
   // Shared state
   notifications: [],
   activeTab: 'printer',
-  darkMode: localStorage.getItem('darkMode') === 'true',
+  darkMode: localStorage.getItem('darkMode') !== 'false',
 
   // ── Printer management ──────────────────────────────────────────
   setPrintersState: ({ printers, activePrinterId, tcpStatuses, labelHistories }) =>

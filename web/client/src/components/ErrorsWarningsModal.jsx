@@ -57,6 +57,22 @@ export default function ErrorsWarningsModal({ printerId, onClose }) {
           command is received.
         </p>
 
+        {/* Support toggle */}
+        <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
+          <label className="flex cursor-pointer items-center gap-2.5">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 dark:border-gray-600 dark:bg-gray-700"
+              checked={!isTruthy(form.disableHqes)}
+              onChange={() => toggle('disableHqes')}
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              Support <code className="rounded bg-gray-100 px-1 py-0.5 text-xs dark:bg-gray-900">~HQES</code>{' '}
+              (uncheck to emulate a 3rd-party printer that doesn't respond to this command)
+            </span>
+          </label>
+        </div>
+
         {/* Errors */}
         <div className="mb-4">
           <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-400">

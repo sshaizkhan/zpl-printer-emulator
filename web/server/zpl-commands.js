@@ -21,6 +21,10 @@ class ZplCommands {
     const match = Object.values(this.commands).find((c) => c === cmd);
     if (!match) return false;
 
+    if (cmd === this.commands.getErrorStatus && this.configs.disableHqes) {
+      return false;
+    }
+
     if (cmd === this.commands.cancelAll) {
       return {
         action: (configs) => {
